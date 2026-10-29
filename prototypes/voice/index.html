@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jarvis · 实时语音验证</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#09111d;color:#e4edf8}body{max-width:850px;margin:28px auto;padding:0 20px}h1{font-size:27px}p{color:#a5bad2;line-height:1.6}.face{height:190px;background:#02060c;border-radius:40px;display:flex;align-items:center;justify-content:center;gap:45px;margin:22px 0}.eye{width:100px;height:60px;background:#52dfef;border-radius:50%;box-shadow:0 0 25px #52dfef44}.face[data-state="idle"] .eye{height:28px}.face[data-state="drowsy"] .eye{height:12px}.face[data-state="speaking"] .eye{animation:talk .5s infinite alternate}.face[data-state="thinking"]{filter:hue-rotate(35deg)}@keyframes talk{to{height:45px}}button{padding:12px 15px;margin:5px 5px 5px 0;background:#193047;color:inherit;border:1px solid #395775;border-radius:9px;font:inherit;cursor:pointer}button:disabled{opacity:.4;cursor:default}.text{padding:12px;background:#132033;border-radius:10px;margin:10px 0;min-height:38px;white-space:pre-wrap;overflow-wrap:anywhere}#events{max-height:150px;overflow:auto;font-size:12px;color:#a5bad2}label{display:block;margin:14px 0}
+</style>
+<h1>Jarvis · 实时语音验证</h1>
+<p>点击“开始聊天”后连接豆包，看到“可以直接讲话”即可连续交流，无需喊唤醒词或每轮按键。结束后关闭麦克风和云连接，下次再点击开始。只保存文字与事件日志，不保存录音。</p>
+<div class="face" id="face" data-state="idle"><div class="eye"></div><div class="eye"></div></div>
+<div id="status" role="status">未连接 · 麦克风关闭</div>
+<p id="wake-input" aria-live="polite"></p>
+<div><button id="direct">开始聊天</button><button id="end" disabled>结束聊天</button><button id="interrupt" disabled>打断播报</button><button id="stop" disabled>关闭交互</button></div>
+<details><summary>实验与诊断</summary><p>Hi Jarvis 仅为可选实验，识别仍不稳定；其余四条短句和稳定唤醒延期至 V2。启用后待机声音仅在本机处理；实验聊天结束后返回本地监听，点击“关闭交互”可关闭麦克风，再使用上方“开始聊天”。</p><button id="start">启用 Hi Jarvis 实验</button><button id="wake-test">只测 Hi Jarvis（不连云端）</button><button id="greet">测试一句问候（不启用麦克风）</button></details>
+<label><input type="checkbox" id="vad">启用实验性本地音量打断（外放时可能误触发）</label>
+<p>播报结束后沉默 2 分钟结束会话；说“等一下，我想想”可安静等待最多 10 分钟，等待期间仍保持云端收音；说“结束聊天”也可退出。首次建议用耳机。离开页面前台会关闭交互。已接入文字历史与初步跨会话记忆：明确说“记住”可优先保存，普通内容在会话结束后整理。模式切换、主动搭话和实体硬件仍未接入。</p>
+<div>你说的</div><div class="text" id="user"></div>
+<div>Jarvis</div><div class="text" id="assistant"></div>
+<div id="metrics"></div><pre id="events"></pre>
+<script type="module" src="/client.mjs"></script></html>

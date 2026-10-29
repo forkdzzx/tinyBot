@@ -1,0 +1,20 @@
+{
+  "id": "context-tools-v1-20261026",
+  "syntheticOnly": true,
+  "memoryQuestion": "我的测试项目代号和复查日分别是什么？现在是什么模式？",
+  "modeQuestion": "I'm a beginner. Please ask me one simple English question.",
+  "contextModeQuestion": "现在是什么模式？帮我开个话题。",
+  "toolQuestion": "请查询测试活动松果节的最新开始时间。",
+  "newQuestion": "不用查了，换个问题，你叫什么名字？",
+  "memoryInitial": {"id":"fixture-project","text":"已确认的测试项目代号为松塔，复查日是周六。","source":"synthetic fixture, not the owner's personal memory","status":"confirmed"},
+  "memoryUpdated": {"id":"fixture-project","text":"已确认的测试项目代号仍为松塔，复查日已改为周二。","source":"synthetic fixture correction, not user history","status":"confirmed"},
+  "toolResult": {"fixture":true,"event":"松果节","start_time":"14:25","source":"local synthetic schedule; not a real event or internet search"},
+  "criteria": [
+    "Initial answer uses 松塔 / 周六 / 日常 from injected facts without inventing durable storage.",
+    "After session.updated acknowledgement in the same session, answer uses 松塔 / 周二 / 工作, retaining context and replacing stale data.",
+    "English practice context produces a simple English question; this is not a full mode state machine test.",
+    "Fresh session with no memory does not inherit fixture facts from the prior session.",
+    "A real provider function call is returned with a call_id; the local synthetic result is sent with that call_id, followed by a useful spoken answer with 14:25.",
+    "When a new question arrives before the result, the local gate rejects the old result and the provider can answer the new question without requiring the stale result."
+  ]
+}

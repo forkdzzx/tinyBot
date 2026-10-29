@@ -1,0 +1,27 @@
+{
+  "name": "jarvis-feasibility",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node prototypes/expression/server.mjs",
+    "voice": "node prototypes/voice/server.mjs",
+    "voice:probe": "node prototypes/voice/probe.mjs",
+    "voice:eval": "node prototypes/evaluation/run.mjs",
+    "voice:eval:ark": "node prototypes/evaluation/run-ark.mjs",
+    "voice:eval:next": "node prototypes/evaluation/run-next.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "voice:wake:setup": "node prototypes/voice/setup-wake.mjs",
+    "voice:wake:smoke": "node prototypes/voice/wake-smoke.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "sherpa-onnx-node": "2.0.0",
+    "ws": "8.22.0"
+  },
+  "optionalDependencies": {
+    "sherpa-onnx-darwin-arm64": "2.0.0"
+  }
+}

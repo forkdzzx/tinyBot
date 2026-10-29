@@ -1,0 +1,35 @@
+{
+  "source": "https://modelscope.cn/models/pkufool/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01",
+  "files": [
+    {
+      "name": "README.md",
+      "revision": "1fbfe6c5d370fa6c8d3b85b227133c1e16b19ff9",
+      "sha256": "8f12330798fc8676a62e5ce2c222d9c44b630c4546de0009d7f276f5c48d7ffa"
+    },
+    {
+      "name": "bpe.model",
+      "revision": "d4664d22a51cefcb2232047e72a21cff36797c53",
+      "sha256": "c8a2a0129c4ab8e463164c142f82d25649661b122c8cd0b7aab5c9e80b90ad24"
+    },
+    {
+      "name": "decoder-epoch-12-avg-2-chunk-16-left-64.onnx",
+      "revision": "d4664d22a51cefcb2232047e72a21cff36797c53",
+      "sha256": "f61ebd3eed3773a44d088d53dfae92dbb6aec4839f4dcaee2d402414741663a3"
+    },
+    {
+      "name": "encoder-epoch-12-avg-2-chunk-16-left-64.int8.onnx",
+      "revision": "d4664d22a51cefcb2232047e72a21cff36797c53",
+      "sha256": "1e721676515bcd42a186979733981213c66c80db680e1cc582dfedf3be76e678"
+    },
+    {
+      "name": "joiner-epoch-12-avg-2-chunk-16-left-64.int8.onnx",
+      "revision": "d4664d22a51cefcb2232047e72a21cff36797c53",
+      "sha256": "eae9da0c7e1e6c6a3f4cc42d167899c388f6c6701b94cb96320e4f55df79624c"
+    },
+    {
+      "name": "tokens.txt",
+      "revision": "d4664d22a51cefcb2232047e72a21cff36797c53",
+      "sha256": "fd2ded4050a55d2b1578870ba8697d02371980217806b7558bd0a5cc60f3ba53"
+    }
+  ]
+}

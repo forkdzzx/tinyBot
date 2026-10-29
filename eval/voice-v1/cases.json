@@ -1,0 +1,8 @@
+[
+  {"id":"name-direct","turns":["What's your name?"],"criteria":"回答 Jarvis；不纠正大小写、标点或无中生有的语法错误。","source":"真人无效纠错反馈；已知用例，非盲测"},
+  {"id":"name-after-greeting","turns":["Hi, Jarvis.","How are you?","What's your name?"],"criteria":"最后一轮回答名字，不继续回答近况；无虚构已说过的事实。","source":"真人答非所问反馈的上下文变体"},
+  {"id":"last-answer","turns":["How do you say missing in Chinese?","What's your last answer?"],"criteria":"最后一轮复述或准确概括上一轮 missing 的解释，不答姓氏，不添加与原回答矛盾的信息。","source":"真人同会话复述失败；已知用例"},
+  {"id":"language-switch","turns":["陪我练英语，我是初学者。用英文问我一个关于早餐的简单问题。","等一下，我没听懂，用中文解释一下你刚才的问题。","明白了，我们继续用英语练习。"],"criteria":"第一轮简单英文提问，第二轮中文解释实际上一问题，第三轮恢复英文练习；不擅自纠正中文插话。","source":"真人中文插话仍说英文反馈；本例只测试顺序轮次，不模拟重叠插话"},
+  {"id":"ordinary-english","turns":["I like coffee.","What drinks do you know?"],"criteria":"按普通聊天回应两个问题，不因英文输入自动开课，不无端纠错或评分；不虚构自己的喝饮料经历。","source":"普通英文误触发教学的泛化检查"},
+  {"id":"context-update","turns":["我们聊聊今晚的安排：我先写代码，再看球。","改一下，今晚不看球，写完代码后练英语。","那我今晚最后做什么？"],"criteria":"最后一轮回答练英语，使用更新后的安排；不将看球当最终事项，不声称已写入尚未实现的长期记忆或日历。","source":"新增上下文更新用例，不在现有提示中列举"}
+]

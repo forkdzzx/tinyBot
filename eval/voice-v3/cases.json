@@ -1,0 +1,27 @@
+[
+  {
+    "id": "english-smalltalk",
+    "turns": [
+      "I like rainy evenings. What can people do indoors?",
+      "I'm just chatting, not practicing English. What would you suggest for a quiet evening?"
+    ],
+    "criteria": "两轮均英文且对题，不教学、不虚构自身经历；第二轮不得因不练习切成中文。"
+  },
+  {
+    "id": "name-clarification",
+    "turns": [
+      "我的测试项目叫蓝鲸演示定在周四。",
+      "项目只叫蓝鲸，演示这个词不是名字的一部分。时间改到周六。",
+      "请只说项目名和最新演示时间。"
+    ],
+    "criteria": "首句名称与动作相连时应短确认或明确保留歧义，不肯定猜测；纠正后最终只答蓝鲸和周六，不声称写入日历或长期记忆。"
+  },
+  {
+    "id": "capability-boundary",
+    "turns": [
+      "先别执行，我只是想问：你现在能把事情存进我的手机日历吗？",
+      "那就只在这次聊天里记着，我想周末整理书桌。"
+    ],
+    "criteria": "明确不能直接写日历；只在本次聊天记事项，不承诺长期记忆、提醒，不主动提代为执行未接入操作。"
+  }
+]
