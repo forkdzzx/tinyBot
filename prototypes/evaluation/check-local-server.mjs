@@ -23,22 +23,27 @@ async function until(check){for(let i=0;i<200;i++){if(check())return;await delay
 const results=[];
 try{
   await app.start();
-  for(const text of ['我又有点不想聊天了，先结束吧。','OK，可以结束。','不要结束聊天']){
+  for(const text of ['我又有点不想聊天了，先结束吧。','哎，我有点不想聊天了，先结束吧。','OK，可以结束了。','不要结束聊天','哎，不要结束聊天','哎，他说“先结束吧”是什么意思']){
+    const shouldEnd=!['不要结束聊天','哎，不要结束聊天','哎，他说“先结束吧”是什么意思'].includes(text);
     phrase=text;const events=[];
     const ws=new WebSocket('ws://127.0.0.1:8792/voice',{origin:'http://127.0.0.1:8792'});
     const send=e=>ws.send(JSON.stringify(e));ws.on('message',raw=>events.push(JSON.parse(raw)));
-    await until(()=>ws.readyState===WebSocket.OPEN);send({type:'start',mode:'manual'});
+    await until(()=>ws.readyState===WebSocket.OPEN);send({type:'start',mode:'manual',clientBuild:'local-integration-20261030'});
     await until(()=>events.some(e=>e.type==='local.ready'));
     send({type:'timing',stage:'asr_final',turn:1,asrWindowMs:100,lastEnergyToAsrMs:50,audio:'discard'});
     send({type:'unmute'});
-    if(text==='不要结束聊天'){
+    if(!shouldEnd){
       await until(()=>events.some(e=>e.type==='conversation.item.input_audio_transcription.completed'));
       assert.ok(!events.some(e=>e.type==='local.end'));send({type:'stop'});
     }else await until(()=>events.some(e=>e.type==='local.end'));
     await until(()=>ws.readyState===WebSocket.CLOSED);
     assert.ok(!events.some(e=>e.type==='local.error'));
     const last=readdirSync(join(root,'history')).map(f=>JSON.parse(readFileSync(join(root,'history',f)))).find(s=>s.entries.some(e=>e.text===text));
-    assert.equal(last.status,'ended');assert.equal(last.endReason,text==='不要结束聊天'?'client_end':'voice_command');
+    assert.equal(last.status,'ended');assert.equal(last.endReason,shouldEnd?'voice_command':'client_end');
+    const logs=readdirSync('runtime/voice').filter(f=>f.endsWith('.jsonl')&&f!=='memory-worker.jsonl').map(f=>readFileSync(join('runtime/voice',f),'utf8')).find(text=>text.includes(last.id));
+    const recorded=logs.trim().split('\n').map(JSON.parse);
+    assert.ok(recorded.some(e=>e.type==='local.session_start'&&e.clientBuild==='local-integration-20261030'));
+    const timing=recorded.find(e=>e.type==='local.turn_timing');assert.equal(timing?.lastEnergyToAsrMs,50);assert.equal(timing.audio,undefined);
     results.push({text,endReason:last.endReason,closed:true});
   }
   console.log(JSON.stringify({localOnly:true,results},null,2));

@@ -44,3 +44,11 @@ test('natural endings close the session without treating discussion or other tas
   }
   for(const text of ['不要结束聊天','先不要结束','可以结束吗？','你说“先结束吧”是什么意思','如果我说先结束吧','这个游戏可以结束','结束任务','好，可以结束这个项目','等一下我想想，这题怎么做','我们为什么要结束聊天'])assert.equal(sessionCommand(text),null,text);
 });
+test('spoken fillers do not hide an ending or erase negation and quoted intent',()=>{
+  for(const prefix of ['哎，','唉','嗯，啊，','呃，','哦，']){
+    for(const command of ['我有点不想聊天了，先结束吧。','OK，可以结束了。','结束聊天']){
+      const {state,ends}=fixture();state.ready();assert.equal(state.inputCompleted(prefix+command),'end',prefix+command);assert.deepEqual(ends,['command']);
+    }
+    for(const text of ['不要结束聊天','先别结束','我不是说要结束聊天','他说先结束吧','如果我说结束聊天','“结束聊天”是什么意思','可以结束这个项目了'])assert.equal(sessionCommand(prefix+text),null,prefix+text);
+  }
+});

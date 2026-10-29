@@ -127,6 +127,20 @@ test('conversational lead-ins save immediately before ending the session',t=>{
   for(const text of ['我想说一下请你记住我喜欢红茶','另外，请记住，我喜欢红茶','By the way, please remember I like tea'])assert.equal(explicitRemember(text),true,text);
   for(const text of ['我想说一下，请你不要记住这个','如果我说请你记住会怎样','记住是什么意思','我看到他写请你记住','记住了吗？'])assert.equal(explicitRemember(text),false,text);
 });
+test('self-correction and additional direct requests are explicit, while hypothetical or negative requests are not',t=>{
+  const {store,root}=fixture(t),h=new HistoryRecorder(store,'manual'),tools=new MemoryTools(store,h);
+  for(const [i,text,quote,key] of [
+    [0,'不不不，我说的是，请你记住，我喜欢喝红茶。','我喜欢喝红茶','preference.drink'],
+    [1,'另外你也要记住，我喜欢打篮球。','我喜欢打篮球','preference.sport'],
+  ]){
+    tools.userStarted();h.user(text);tools.userCompleted();
+    const response=tools.handle({name:'remember_user_fact',call_id:'natural-'+i,arguments:JSON.stringify({key,layer:'profile',quote})});
+    assert.equal(JSON.parse(response.items[0].content[0].text).status,'saved');
+    assert.ok(new MemoryStore(root,{recover:false}).state.memories.some(m=>m.text===quote&&m.origin==='explicit'));
+  }
+  for(const text of ['哎，请你记住，我喜欢喝茶','不，我是说，请记住我喜欢茶','另外你还需要记住，我喜欢茶'])assert.equal(explicitRemember(text),true,text);
+  for(const text of ['哎，请你不喜欢喝红茶。','不，我说的是，不要记住这个','另外你也不要记住','如果你也要记住呢','他说的是请你记住','我说的是“请记住”这个短句','我说的是请你记住吗？'])assert.equal(explicitRemember(text),false,text);
+});
 test('temporary interaction instructions are not durable preferences; genuine habits survive',()=>{
   for(const text of ['我想说中文了。','今天用英文聊天','请你用中文回答','陪我练英语','这次详细解释','Please speak English','Let us reply in Chinese for now'])assert.equal(sessionOnlyMemory(text),true,text);
   for(const text of ['我平时喜欢用中文聊天','以后默认用中文回答','我想提高英语口语水平','我想每天练英语','我的英语水平一般','我喜欢喝红茶','I usually prefer to speak English'])assert.equal(sessionOnlyMemory(text),false,text);

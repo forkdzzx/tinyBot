@@ -1,6 +1,7 @@
 import { PCMPlayer,PlaybackReceipts } from './playback.mjs';
 import { SessionLifecycle } from './lifecycle.mjs';
 import { TurnTiming } from './timing.mjs';
+const CLIENT_BUILD='voice-web-20261030';
 const el=id=>document.getElementById(id);
 let socket,wakeSocket,stream,inputContext,outputContext,capture,player;
 let generation=0,voiceGeneration=0,phase='disabled',ready=false,diagnostic=false;
@@ -94,7 +95,7 @@ function beginCloud(ticket=null){
   socket=new WebSocket(`ws://${location.host}/voice`);
   connectTimeout=setTimeout(()=>endChat('云端连接超时'),22000);
   socket.onopen=()=>{
-    send(diagnostic?{type:'start',mode:captureActive?'manual':'diagnostic'}:{type:'start',ticket});
+    send(diagnostic?{type:'start',mode:captureActive?'manual':'diagnostic',clientBuild:CLIENT_BUILD}:{type:'start',ticket,clientBuild:CLIENT_BUILD});
     heartbeat=setInterval(()=>send({type:'heartbeat'}),10000);
   };
   socket.onerror=()=>endChat('云端代理连接失败');

@@ -1,10 +1,11 @@
 // Browser-independent session timing. Playback completion, not generation completion,
 // starts the silence clock. The clock is injectable for boundary/race tests.
+import {stripSpokenLeadIn} from './intent-text.mjs';
 export const IDLE_MS = 120_000;
 export const WAIT_MS = 600_000;
 export function sessionCommand(text) {
   if (/[“”"「」『』?？]/u.test(String(text))) return null;
-  const normalized = String(text).toLowerCase().replace(/[\s\p{P}]/gu, '');
+  const normalized = stripSpokenLeadIn(text).toLowerCase().replace(/[\s\p{P}]/gu, '');
   if (/^(?:(?:ok|好的|好|嗯|那就|那|我们|今天|我又有点不想聊天了|我有点不想聊天了|我不想聊天了))*(?:请|请你|可以|先)?(?:结束聊天|停止聊天|结束对话|停止对话|结束|不聊了|先不聊了)(?:吧|了|啦|谢谢)?$/u.test(normalized) || ['endtheconversation','stopchatting'].includes(normalized)) return 'end';
   if (['等一下我想想','等一下让我想想','让我想想','等我想想','waitletmethink','letmethink'].includes(normalized)) return 'wait';
   return null;

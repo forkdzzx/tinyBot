@@ -1,13 +1,17 @@
 // Conservative command/scope rules. User text remains in history even when it
 // is unsuitable for durable memory. These rules are not a semantic classifier.
 const quoted = /[“”"「」『』]/u;
+import {stripSpokenLeadIn} from '../voice/intent-text.mjs';
 export function explicitRemember(text) {
   if (typeof text !== 'string' || quoted.test(text) ||
       /(?:不要|别|不用|不必|不需要|不能|无法).{0,4}(?:记|保存)|(?:don't|do not|never)\s+(?:remember|save)/iu.test(text)) return false;
-  // Accept conversational lead-ins, including ASR without punctuation, but not
-  // arbitrary occurrences in questions, hypothetical examples or reported speech.
-  return /^(?:(?:我想说一下|我想补充一下|还有一件事|另外|对了|嗯)[，,。:\s]*)*(?:请你|请帮我|请|麻烦你|帮我)?\s*(?:记住|记一下|记下)(?!是什么意思|怎么|了吗|吗|了没)/u.test(text.trim()) ||
-    /^(?:(?:by the way|also)[,.:\s]*)?(?:please\s+)?remember\b(?!\s+(?:what|how|when|why)\b)/iu.test(text.trim());
+  // A self-correction can start with "不不不，我说的是". Only remove the
+  // repeated interjection when it is immediately tied to a self-correction;
+  // actual negative commands are still rejected above and by the grammar below.
+  let command=stripSpokenLeadIn(text).replace(/^(?:不[，,\s]*){1,4}(?=我说的是|我是说)/u,'');
+  command=command.replace(/^(?:(?:我想说一下|我想补充一下|还有一件事|另外|对了|我说的是|我是说)[，,。:：\s]*)*/u,'');
+  return /^(?:(?:请你|请帮我|请|麻烦你|帮我)|你(?:也|还)?(?:要|得|需要))?\s*(?:记住|记一下|记下)(?!是什么意思|怎么|了吗|吗|了没)/u.test(command) ||
+    /^(?:(?:by the way|also)[,.:\s]*)?(?:please\s+)?remember\b(?!\s+(?:what|how|when|why)\b)/iu.test(command);
 }
 
 export function sessionOnlyMemory(quote, sourceText = quote) {

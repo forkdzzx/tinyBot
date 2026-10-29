@@ -30,6 +30,7 @@ const files = new Map([
   ['/capture.mjs',['capture.mjs','text/javascript; charset=utf-8']],
   ['/playback.mjs',['playback.mjs','text/javascript; charset=utf-8']],
   ['/lifecycle.mjs',['lifecycle.mjs','text/javascript; charset=utf-8']],
+  ['/intent-text.mjs',['intent-text.mjs','text/javascript; charset=utf-8']],
   ['/timing.mjs',['timing.mjs','text/javascript; charset=utf-8']],
   ['/playback-test',['playback-test.html','text/html; charset=utf-8']],
   ['/playback-test.mjs',['playback-test.mjs','text/javascript; charset=utf-8']],
@@ -122,7 +123,8 @@ wss.on('connection',client=> {
     }
     if(e.type==='start' && !upstream) {
       if(!['manual','diagnostic'].includes(e.mode)&&!grants.consume(e.ticket)){fail('未收到有效会话触发，请点击开始聊天或重新实验唤醒');return;}
-      log({type:'local.session_start',entryMode:e.mode==='manual'?'manual':e.mode==='diagnostic'?'diagnostic':'wake'});
+      log({type:'local.session_start',entryMode:e.mode==='manual'?'manual':e.mode==='diagnostic'?'diagnostic':'wake',
+        clientBuild:typeof e.clientBuild==='string'&&/^[a-z0-9_.-]{1,60}$/i.test(e.clientBuild)?e.clientBuild:'unreported'});
       try{
         if(e.mode!=='diagnostic'){
           history=new HistoryRecorder(store,e.mode==='manual'?'manual':'wake');

@@ -19,7 +19,8 @@
 - [三分钟记忆短测（已完成）](docs/memory-short-test.md)
 - [真人记忆反馈与原问题（2026-10-29）](docs/memory-feedback-2026-10-29.md)
 - [记忆与自然结束修复](docs/memory-repair-2026-10-29.md)
-- [本轮定向短测：约三分钟](docs/memory-repair-short-test.md)
+- [定向短测（已完成）](docs/memory-repair-short-test.md)
+- [最新真人反馈与口语前缀修复（2026-10-30）](docs/spoken-intent-feedback-2026-10-30.md)
 - [本地唤醒漏检诊断（已完成）](docs/local-wake-diagnosis.md)
 - [本地唤醒漏检分析](docs/wake-review-2026-10-25.md)
 - [本地唤醒与会话流程短测（暂停）](docs/local-wake-test.md)
@@ -69,7 +70,7 @@ npm run voice
 
 2026-10-26 用户已确认：稳定本地唤醒和其余四条短句移入 [V2 备忘录](prd/v2-iteration-memo.md)。页面“实验与诊断”仅保留可选 **Hi Jarvis** 本地入口，默认关闭且仍可能漏检，不作为 V1 验收要求。若需启用实验，在本机先运行 `npm run voice:wake:setup` 安装模型；待机语音不上云。历史 [五短句测试](docs/local-wake-test.md)已暂停，无需重复。
 
-已接入正式文字历史和最小跨会话记忆，后台提炼复用 `runtime/ark.env`（本机已配置）。历史与记忆存于 `runtime/data/`，不保存录音；维护方式见[实现记录](docs/memory-implementation-2026-10-27.md)。[10-29 真人短测](docs/memory-feedback-2026-10-29.md)确认跨会话读取有效、自然度改善，随后修复带开场白的即时保存误判、临时语言误记及两种自然结束表达，通过 68 项单元回归、真实服务定向案例和静音浏览器检查。等待问题仅补充了诊断，仍待真人定位；现在按[定向短测](docs/memory-repair-short-test.md)体验即可。完整冲突确认、四模式、搜索、主动搭话与实体硬件仍未完成。
+已接入正式文字历史和最小跨会话记忆，后台提炼复用 `runtime/ark.env`（本机已配置）。历史与记忆存于 `runtime/data/`，不保存录音；维护方式见[实现记录](docs/memory-implementation-2026-10-27.md)。[10-29 真人短测](docs/memory-feedback-2026-10-29.md)确认跨会话读取有效、自然度改善，随后修复保存、临时语言和自然结束问题。10-30 真人短测仍发现语气词及两类自然保存前缀漏判，已继续修复，70 项单元检查及服务／浏览器回放通过；用户反馈本轮没有明显长等待，量化延迟仍待验收。[短测已完成](docs/spoken-intent-feedback-2026-10-30.md)，无需重复整轮。保存承诺一致性、完整冲突确认、四模式、搜索、主动搭话与实体硬件仍未完成。
 
 ```sh
 npm run voice:probe -- --greeting
