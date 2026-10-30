@@ -1,0 +1,14 @@
+{
+  "modeShown": true,
+  "rollbackLockShown": true,
+  "sandboxNotice": true,
+  "oldOutputCleared": true,
+  "confirmationReceiptAfterPlayback": true,
+  "speechFailureKeepsText": true,
+  "speechFailureReturnsToListening": true,
+  "restart": true,
+  "spokenEnd": true,
+  "resourcesReleased": true,
+  "pageErrors": [],
+  "method": "Playwright CLI; silent synthetic track and mocked WebSocket; no real microphone or cloud"
+}

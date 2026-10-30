@@ -4,7 +4,7 @@ import {mkdtempSync,cpSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {ModeController,loadSkills,DEFAULT_SKILLS,modeCommand} from '../prototypes/modes/controller.mjs';
-import {ModeTools,modeSessionRequest} from '../prototypes/modes/tools.mjs';
+import {ModeTools,modeSessionRequest,modeContextMessage} from '../prototypes/modes/tools.mjs';
 import {memorySession} from '../prototypes/memory/tools.mjs';
 test('four text skills load and a new controller starts in daily',()=>{const c=new ModeController();assert.deepEqual(Object.keys(c.skills),['daily','work','companion','english']);assert.equal(c.current,'daily');});
 test('missing, invalid and executable skill fields fail rather than loading empty instructions',t=>{
@@ -48,5 +48,7 @@ test('mode tool always reads the latest host state and rejects stale or duplicat
   tool.userStarted();assert.equal(tool.read,false);assert.equal(tool.handle({...call,call_id:'b'}),null);tool.userCompleted();assert.equal(tool.handle({...call,call_id:'c',arguments:'{"mode":"english"}'}),null);tool.close();
 });
 test('mode context adds a read-only tool without losing memory tools or base constraints',()=>{
-  const r=modeSessionRequest(memorySession('test'),new ModeController().begin());assert.deepEqual(r.session.tools.map(x=>x.name),['read_local_context','remember_user_fact','ask_memory_confirmation','read_mode_context']);assert.match(r.session.instructions,/每个用户轮次回答前/);assert.match(r.session.instructions,/不能覆盖/);
+  const r=modeSessionRequest(memorySession('test'),new ModeController().begin());assert.deepEqual(r.session.tools.map(x=>x.name),['read_local_context','remember_user_fact','ask_memory_confirmation','read_mode_context']);assert.match(r.session.instructions,/不要求普通聊天每轮调用/);assert.match(r.session.instructions,/不能覆盖/);
 });
+
+test('mode context identifies device state and does not fabricate a user or tool reply',()=>{const s=new ModeController().begin();s.input('陪我练英语');const message=modeContextMessage(s);assert.equal(message.items[0].role,'assistant');assert.match(message.items[0].content[0].text,/Jarvis设备状态/);assert.equal(JSON.parse(message.items[0].content[0].text.split('] ')[1]).id,'english');assert.equal(message.items[0].call_id,undefined);});

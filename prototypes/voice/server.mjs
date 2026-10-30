@@ -15,7 +15,7 @@ import {memorySession,MemoryTools,MEMORY_PROMPT_ID} from '../memory/tools.mjs';
 import {explicitRemember} from '../memory/policy.mjs';
 import {memorySpeech,streamMemorySpeech} from './memory-speech.mjs';
 import {ModeController,loadSkills} from '../modes/controller.mjs';
-import {ModeTools,modeSessionRequest,MODE_PROMPT_ID} from '../modes/tools.mjs';
+import {ModeTools,modeSessionRequest,modeContextMessage,MODE_PROMPT_ID} from '../modes/tools.mjs';
 
 export function createVoiceServer({config,endpoint=ENDPOINT,port=8766,memoryRoot=fileURLToPath(new URL('../../runtime/data/',import.meta.url)),withWake=true,extract,speak=streamMemorySpeech,memorySandbox=false,skillsRoot}={}){
 const modes=new ModeController(loadSkills(skillsRoot));
@@ -70,7 +70,8 @@ wss.on('connection',client=> {
   let creationTimer, closeTimer, cancelTimer;
   let paused=false, lastHeartbeat=Date.now();
   let history=null,memoryTools=null,historyFinished=false;
-  let modeTools=null,modeScope=null,modeTimer=null;
+  let modeTools=null,modeScope=null;
+  let modeNotice=null;
   let memoryOwned=false,memorySpeechAbort=null,memoryFeedbackTimer=null,turnRevision=0;
   let mainTurnDone=false,contextFeedback=null;
   const guard=new ResponseGuard();
@@ -89,7 +90,7 @@ wss.on('connection',client=> {
   function stop(reason='client_end') {
     if(closing) return;
     closing=true; ready=false;
-    memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);clearTimeout(modeTimer);
+    memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);cancelModeNotice();
     finishHistory(reason);
     clearTimeout(creationTimer); clearTimeout(cancelTimer); clearInterval(watchdog);
     cloud({type:'session.close'});
@@ -116,9 +117,30 @@ wss.on('connection',client=> {
       cloud({type:'conversation.item.create',items:[{role:'assistant',content:[{type:'input_text',text:contextFeedback.text}]}]});contextFeedback=null;
     }
   }
+  function forwardOutput(event,source='provider_output'){
+    if(['response.output_text.delta','response.output_text.done','response.output_audio.started'].includes(event.type))history?.output(event,{source});
+    const out={type:event.type,response_id:event.response_id,delta:event.delta,text:event.text,transcript:event.transcript};
+    send(out);if(event.type!=='response.output_audio.delta')log({...out,source});
+  }
+  function cancelModeNotice(){modeNotice?.controller.abort();modeNotice=null;}
+  function announceMode(text){
+    cancelModeNotice();
+    const state={controller:new AbortController(),events:[],bytes:0,revision:turnRevision};modeNotice=state;
+    const id=`mode-notice-${randomUUID()}`;
+    forwardOutput({type:'response.output_text.done',response_id:id,text},'local_mode');
+    const active=()=>!closing&&modeNotice===state&&turnRevision===state.revision&&!state.controller.signal.aborted;
+    speak({config,text,responseId:id,signal:state.controller.signal,onEvent:event=>{
+      if(active())forwardOutput(event,'local_mode');
+    },onUsage:usage=>log({type:'local.mode_speech_usage',usage})}).catch(()=>{
+      if(active()){log({type:'local.mode_speech_failed'});send({type:'local.notice',message:`切换提示音频暂时失败。${text}`});}
+    }).finally(()=>{
+      if(!active())return;modeNotice=null;
+      try{for(const event of state.events)forwardOutput(event);}catch{fail('模式提示或文字历史保存失败');}
+    });
+  }
   function localMemoryFeedback(result){
     if(closing)return;
-    memoryOwned=true;clearTimeout(memoryFeedbackTimer);clearTimeout(modeTimer);memorySpeechAbort?.abort();
+    memoryOwned=true;clearTimeout(memoryFeedbackTimer);memorySpeechAbort?.abort();cancelModeNotice();
     const source=result.status==='mode_control'?'local_mode':'local_memory';
     const revision=turnRevision,id=`${source==='local_mode'?'mode':'memory'}-${randomUUID()}`,text=memorySpeech(result);
     const controller=new AbortController();memorySpeechAbort=controller;
@@ -212,15 +234,17 @@ wss.on('connection',client=> {
         }
         if(event.type==='session.closed') {
           finishHistory('provider_closed');
+          cancelModeNotice();memorySpeechAbort?.abort();
           closing=true; ready=false; clearTimeout(creationTimer);
-          clearTimeout(modeTimer);
+
           clearTimeout(closeTimer); clearInterval(watchdog);clearTimeout(cancelTimer);
           send({type:'local.closed'});log({type:event.type,audioFrames});
           upstream.close();client.close();return;
         }
         if(closing) return;
         if(event.type==='conversation.item.input_audio_transcription.started') {
-          turnRevision++;memoryOwned=false;memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);clearTimeout(modeTimer);mainTurnDone=false;contextFeedback=null;
+          cancelModeNotice();
+          turnRevision++;memoryOwned=false;memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);mainTurnDone=false;contextFeedback=null;
           paused=false;
           memoryTools?.userStarted();history?.interrupt();
           modeTools?.userStarted();
@@ -241,10 +265,9 @@ wss.on('connection',client=> {
             if(modeResult.change){
               const event={type:'local.mode_changed',...modeResult.change,at:new Date().toISOString(),userEntryId:history.currentUser};
               history.session.modeEvents.push(event);history.persist();log(event);
+              cloud(modeContextMessage(modeScope));log({type:'local.mode_context_sent',revision:modeScope.snapshot().revision});
             }
             send({type:'local.mode_state',...modeScope.snapshot(),instructions:undefined});
-            const revision=turnRevision;
-            modeTimer=setTimeout(()=>{if(!closing&&revision===turnRevision&&!modeTools.read){memoryTools.wroteThisTurn=true;log({type:'local.mode_context_missing'});localMemoryFeedback({status:'mode_control',message:'这轮没有取得当前对话规则，请再说一次。'});}},8000);
             const reply=modeResult.handled?null:memoryTools.reply();
             if(modeResult.handled){memoryTools.currentOffer=null;memoryTools.wroteThisTurn=true;localMemoryFeedback({status:'mode_control',message:modeResult.reply});}
             else if(reply)localMemoryFeedback(reply);
@@ -253,22 +276,29 @@ wss.on('connection',client=> {
               const revision=turnRevision;
               memoryFeedbackTimer=setTimeout(()=>{if(!closing&&revision===turnRevision){memoryTools.wroteThisTurn=true;localMemoryFeedback({status:'not_called'});}},8000);
             }else{const recalled=memoryTools.recall(text);if(recalled)localMemoryFeedback(recalled);}
+            if(modeResult.change&&!modeResult.handled&&!memoryOwned)announceMode(modeResult.change.announcement);
           }
         }
         if(event.type==='response.canceled') clearTimeout(cancelTimer);
         if(!guard.accept(event)) return;
         if(memoryOwned&&event.type.startsWith('response.output_'))return;
-        if(modeTools&&!modeTools.read&&event.type.startsWith('response.output_'))return;
         if(paused&&event.type.startsWith('response.output_'))return;
         if(event.type==='response.function_call_arguments.done'){
           if(!paused)for(const item of (event.items||[]).slice(0,4)){
             if(item.name==='read_mode_context'){
-              const result=modeTools?.handle(item);if(result){clearTimeout(modeTimer);log({type:'local.mode_context_read',mode:modeScope.snapshot().id,revision:modeScope.snapshot().revision});cloud(result);}
+              const result=modeTools?.handle(item);if(result){log({type:'local.mode_context_read',mode:modeScope.snapshot().id,revision:modeScope.snapshot().revision});cloud(result);}
             }else{const result=memoryTools?.handle(item);if(result)cloud(result);}
           }
           return;
         }
-        if(event.type==='response.output_text.delta'||event.type==='response.output_text.done'||event.type==='response.output_audio.started')history?.output(event);
+        if(event.type.startsWith('response.output_')){
+          if(modeNotice){
+            modeNotice.bytes+=Buffer.byteLength(JSON.stringify(event));
+            if(modeNotice.bytes>3*1024*1024){fail('模式提示期间回答积压，请重新开始');return;}
+            modeNotice.events.push(event);
+          }else forwardOutput(event);
+          return;
+        }
         // Never forward a session configuration or auth material to the browser.
         if(event.type.startsWith('response.output_') || event.type.startsWith('conversation.item.input_audio_transcription.') || event.type==='response.canceled') {
           const out={type:event.type,response_id:event.response_id,delta:event.delta,text:event.text,transcript:event.transcript};
@@ -293,7 +323,8 @@ wss.on('connection',client=> {
       } else if(e.type==='unmute') cloud({type:'input_audio_unmute.commit'});
       else if(e.type==='mute') cloud({type:'input_audio_mute.commit'});
       else if(e.type==='interrupt'){try{
-        memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);clearTimeout(modeTimer);contextFeedback=null;
+        cancelModeNotice();
+        memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);contextFeedback=null;
         if(memoryTools)memoryTools.wroteThisTurn=true;
         history?.interrupt();cancel();
       }catch{fail('历史保存失败');}}

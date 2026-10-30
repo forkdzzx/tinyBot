@@ -13,7 +13,7 @@
 <div><button id="direct">开始聊天</button><button id="end" disabled>结束聊天</button><button id="interrupt" disabled>打断播报</button><button id="stop" disabled>关闭交互</button></div>
 <details><summary>实验与诊断</summary><p>Hi Jarvis 仅为可选实验，识别仍不稳定；其余四条短句和稳定唤醒延期至 V2。启用后待机声音仅在本机处理；实验聊天结束后返回本地监听，点击“关闭交互”可关闭麦克风，再使用上方“开始聊天”。</p><button id="start">启用 Hi Jarvis 实验</button><button id="wake-test">只测 Hi Jarvis（不连云端）</button><button id="greet">测试一句问候（不启用麦克风）</button></details>
 <label><input type="checkbox" id="vad">启用实验性本地音量打断（外放时可能误触发）</label>
-<p>播报结束后沉默 2 分钟结束会话；说“等一下，我想想”可安静等待最多 10 分钟，等待期间仍保持云端收音；说“结束聊天”也可退出。首次建议用耳机。离开页面前台会关闭交互。已接入文字历史与初步跨会话记忆：明确说“记住”可优先保存，普通内容在会话结束后整理。模式切换、主动搭话和实体硬件仍未接入。</p>
+<p>播报结束后沉默 2 分钟结束会话；说“等一下，我想想”可安静等待最多 10 分钟，等待期间仍保持云端收音；说“结束聊天”也可退出。首次建议用耳机。离开页面前台会关闭交互。已接入文字历史与初步跨会话记忆：明确说“记住”可优先保存，普通内容在会话结束后整理。支持日常、工作、陪伴和英语练习模式；说“不要切换”可撤销最近一次自动切换，并禁止本次聊天继续自动切换。主动搭话和实体硬件仍未接入。</p>
 <div>你说的</div><div class="text" id="user"></div>
 <div>Jarvis</div><div class="text" id="assistant"></div>
 <div id="metrics"></div><pre id="events"></pre>
