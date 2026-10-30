@@ -54,8 +54,8 @@ test('background jobs recover after restart and commit memory plus completion to
 });
 test('unverified observations and different values of one key never overwrite a fact',t=>{
   const {store}=fixture(t);const a=closed(store);store.startJob(a.job.id);store.completeJob(a.job.id,{summary:'',memories:[candidate(a.u)]});
-  const b=closed(store,'我喜欢喝红茶');store.startJob(b.job.id);store.completeJob(b.job.id,{summary:'',memories:[candidate(b.u,'我喜欢喝红茶')]});
-  const found=store.search('喜欢喝什么');assert.equal(found.memories[0].text,'我喜欢喝乌龙茶');assert.equal(found.pending[0].text,'我喜欢喝红茶');
+  const b=closed(store,'我现在只喜欢喝红茶');store.startJob(b.job.id);store.completeJob(b.job.id,{summary:'',memories:[candidate(b.u,'我现在只喜欢喝红茶')]});
+  const found=store.search('喜欢喝什么');assert.equal(found.memories[0].text,'我喜欢喝乌龙茶');assert.equal(found.pending[0].text,'我现在只喜欢喝红茶');
   const c=closed(store,'我今天有些担心');store.startJob(c.job.id);store.completeJob(c.job.id,{summary:'',memories:[{...candidate(c.u,'我今天有些担心','mood.observation'),kind:'observation'}]});
   assert.equal(store.state.memories.at(-1).status,'pending_confirmation');
 });
@@ -107,7 +107,7 @@ test('playback receipts wait for all scheduled chunks and ignore completion afte
 });
 test('memory prompt replaces the obsolete capability claim and keeps execution boundaries',()=>{
   const r=memorySession('test');assert.ok(!r.session.instructions.includes('未接入联网搜索、手机日历、定时提醒、跨会话记忆'));
-  assert.deepEqual(r.session.tools.map(t=>t.name),['read_local_context','remember_user_fact']);assert.ok(r.session.instructions.includes('只有工具返回 saved'));
+  assert.deepEqual(r.session.tools.map(t=>t.name),['read_local_context','remember_user_fact','ask_memory_confirmation']);assert.ok(r.session.instructions.includes('只有工具返回 saved'));
 });
 test('quoted, negated or ordinary mention of remembering does not authorize a write',()=>{
   for(const text of ['不要记住这个','请不要记住这个','他说“记住这个”','你能解释记住是什么意思吗',"Don't remember this"])assert.equal(explicitRemember(text),false);

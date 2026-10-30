@@ -1,0 +1,59 @@
+async (page) => {
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.addInitScript(()=>{
+    window.__sockets=[];window.__tracks=[];
+    navigator.mediaDevices.getUserMedia=async()=>{
+      const ctx=new AudioContext({sampleRate:16000}),dest=ctx.createMediaStreamDestination();
+      const osc=ctx.createOscillator(),gain=ctx.createGain();gain.gain.value=0;osc.connect(gain).connect(dest);osc.start();
+      window.__tracks.push(...dest.stream.getTracks());return dest.stream;
+    };
+    class Socket {
+      static OPEN=1;
+      constructor(url){this.url=url;this.sent=[];this.bufferedAmount=0;window.__sockets.push(this);queueMicrotask(()=>{this.readyState=1;this.onopen?.();});}
+      emit(e){this.onmessage?.({data:JSON.stringify(e)});}
+      send(raw){if(typeof raw!=='string')return;const e=JSON.parse(raw);this.sent.push(e);if(e.type==='start')queueMicrotask(()=>this.emit({type:'local.ready'}));if(e.type==='interrupt')queueMicrotask(()=>this.emit({type:'response.canceled'}));if(e.type==='stop')queueMicrotask(()=>this.emit({type:'local.closed'}));}
+      close(){this.readyState=3;queueMicrotask(()=>this.onclose?.());}
+    }
+    window.WebSocket=Socket;
+  });
+  await page.goto('http://127.0.0.1:8767/');
+  if(!await page.getByRole('heading',{name:'Jarvis · 隔离记忆测试'}).isVisible())throw new Error('Missing sandbox heading');
+  if(!await page.getByRole('note').isVisible())throw new Error('Missing data isolation notice');
+  if(await page.evaluate(()=>window.__sockets.length||window.__tracks.length))throw new Error('Automatic capture');
+  const start=page.getByRole('button',{name:'开始聊天',exact:true});await start.click();
+  await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('可以直接讲话'));
+  await page.evaluate(()=>{
+    const s=window.__sockets.at(-1);
+    s.emit({type:'response.output_audio.started',response_id:'old'});
+    s.emit({type:'response.output_audio.delta',delta:btoa('\0'.repeat(48000))});
+    s.emit({type:'response.output_text.done',text:'旧回答'});
+    s.emit({type:'local.memory_result',status:'confirmation_required'});
+    if(document.querySelector('#assistant').textContent)throw new Error('Old text left visible');
+    if(!s.sent.some(e=>e.type==='playback'&&e.response_id==='old'&&e.state==='interrupted'))throw new Error('Old audio not interrupted');
+    s.emit({type:'response.output_text.done',response_id:'memory-question',text:'要改为绿茶吗？'});
+    s.emit({type:'response.output_audio.started',response_id:'memory-question'});
+    s.emit({type:'response.output_audio.delta',delta:btoa('\0'.repeat(9600))});
+    s.emit({type:'response.output_audio.done',response_id:'memory-question'});
+    if(s.sent.some(e=>e.type==='playback'&&e.response_id==='memory-question'&&e.state==='completed'))throw new Error('Premature playback receipt');
+  });
+  await page.waitForFunction(()=>window.__sockets.at(-1).sent.some(e=>e.type==='playback'&&e.response_id==='memory-question'&&e.state==='completed'));
+  await page.evaluate(()=>{
+    const s=window.__sockets.at(-1);s.emit({type:'local.user_started'});
+    s.emit({type:'local.memory_result',status:'failed'});
+    s.emit({type:'response.output_text.done',response_id:'memory-failed',text:'这次没保存成功，先不算记住。'});
+    s.emit({type:'response.output_audio.started',response_id:'memory-failed'});
+    s.emit({type:'response.output_audio.delta',delta:btoa('\0'.repeat(48000))});
+    s.emit({type:'local.notice',message:'语音播报暂时失败。这次没保存成功，先不算记住。'});
+    s.emit({type:'local.memory_speech_failed'});
+  });
+  if(await page.locator('#face').getAttribute('data-state')!=='listening')throw new Error('Failure stuck in thinking');
+  if(await page.locator('#assistant').textContent()!=='这次没保存成功，先不算记住。')throw new Error('Failure text lost');
+  await page.getByRole('button',{name:'结束聊天',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('麦克风关闭'));
+  await start.click();await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('可以直接讲话'));
+  await page.evaluate(()=>{const s=window.__sockets.at(-1);s.emit({type:'local.user_started'});s.emit({type:'conversation.item.input_audio_transcription.completed',text:'我有点不想聊天了，先结束吧'});});
+  await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('麦克风关闭'));
+  if(await page.evaluate(()=>window.__tracks.some(t=>t.readyState!=='ended')||window.__sockets.some(s=>s.readyState!==3)))throw new Error('Resources leaked');
+  if(errors.length)throw new Error(errors.join('; '));
+  return {sandboxNotice:true,oldOutputCleared:true,confirmationReceiptAfterPlayback:true,speechFailureKeepsText:true,speechFailureReturnsToListening:true,restart:true,spokenEnd:true,resourcesReleased:true,pageErrors:errors};
+}

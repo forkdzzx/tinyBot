@@ -13,6 +13,9 @@ export function explicitRemember(text) {
   return /^(?:(?:请你|请帮我|请|麻烦你|帮我)|你(?:也|还)?(?:要|得|需要))?\s*(?:记住|记一下|记下)(?!是什么意思|怎么|了吗|吗|了没)/u.test(command) ||
     /^(?:(?:by the way|also)[,.:\s]*)?(?:please\s+)?remember\b(?!\s+(?:what|how|when|why)\b)/iu.test(command);
 }
+export function memoryQuoteCore(text){
+  return explicitRemember(text)?text.replace(/^.*?(?:记住|记一下|记下)(?:这个[，,:：\s]+)?[，,:：\s]*/u,''):text;
+}
 
 export function sessionOnlyMemory(quote, sourceText = quote) {
   // Use the source clause as well as the quoted fragment: an extractor may
@@ -32,4 +35,25 @@ export function sessionOnlyMemory(quote, sourceText = quote) {
   // Language/style instructions without an explicit persistent scope apply to
   // the current interaction; learning goals and language ability are not commands.
   return /(?:我想|我要|我不想|请|改|换|用|说|讲|陪我|帮我|不练)|\b(?:let'?s|please|can you|i want to|switch|speak|reply|answer)\b/iu.test(context);
+}
+
+// These fields can contain several simultaneous likes. Unknown/scalar fields
+// remain conservative; an LLM cannot bypass a conflict by marking it additive.
+const COLLECTION_KEYS=new Set(['preference.hobby','preference.drink','preference.food','preference.sport','preference.game.genre','preference.music']);
+export function additivePreference(key,text,context=text){
+  return COLLECTION_KEYS.has(key)&&
+    /喜欢|爱好|偏爱|\b(?:like|enjoy|love)\b/iu.test(text)&&
+    !/不|讨厌|只|最|唯一|改成|换成|替换|不再|以前|曾经|过去|\b(?:not|no longer|only|favorite|favourite|instead|used to)\b/iu.test(context);
+}
+export function confirmationDecision(text){
+  if(typeof text!=='string'||/[“”"「」『』?？]/u.test(text))return null;
+  const s=stripSpokenLeadIn(text).toLowerCase().replace(/[\s\p{P}]/gu,'');
+  // Within an outstanding heard memory question, ASR may transcribe 记 as 计.
+  // Match the whole affirmative action, never an isolated homophone or negation.
+  if(/^(?:是的|对|没错)?按新的[记计]$/u.test(s))return 'accept';
+  if(/^(?:对的?|是的|没错|好的?|确认)(?:就?(?:按|用)(?:新的|这个|这条)(?:记|计|保存|更新|替换)(?:吧)?)?$/u.test(s))return 'accept';
+  if(['对','对的','是的','没错','确认','确认更新','确认替换','按新的记','对按新的记','是的按新的记','用新的替换','是的用新的替换','yes','yesplease','confirm'].includes(s))return 'accept';
+  if(['不','不是','不对','不要替换','保留原来的','按原来的记','no','keeptheoldone'].includes(s))return 'reject';
+  if(['先不改','以后再说','暂时不确认','先不确认','不确定','先放着','later','notsure','notnow'].includes(s))return 'defer';
+  return null;
 }

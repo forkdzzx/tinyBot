@@ -1,8 +1,9 @@
 import {ToolTurnGate} from '../voice/context-contract.mjs';
 import {sessionCreate} from '../voice/config.mjs';
 import {explicitRemember} from './store.mjs';
+import {confirmationDecision} from './policy.mjs';
 
-export const MEMORY_PROMPT_ID='voice-memory-v1.1-20261029';
+export const MEMORY_PROMPT_ID='voice-memory-v1.2-20261030';
 export function memorySession(voice){
   const request=sessionCreate(voice);
   request.session.instructions=request.session.instructions.replace(/^- 当前原型只支持对话和本次会话内的上下文；.*$/m,
@@ -11,20 +12,38 @@ export function memorySession(voice){
   request.session.tools=[
     {type:'function',name:'read_local_context',description:'查找与当前问题相关的本地跨会话记忆、个人档案及待确认候选。用于询问之前的个人资料；不会保存或执行任务。',parameters:{type:'object',properties:{query:{type:'string',description:'当前要查的个人资料，保留具体主题关键词'}},required:['query']}},
     {type:'function',name:'remember_user_fact',description:'仅用户本轮明确说记住时使用，保存用户原话；必须以返回状态判断是否成功。',parameters:{type:'object',properties:{key:{type:'string',description:'稳定属性键，相同属性保持一致'},layer:{type:'string',enum:['profile','cross_session']},quote:{type:'string',description:'用户明确表达的精确连续原文，不改写、不编造'}},required:['key','layer','quote']}},
-  ];return request;
+    {type:'function',name:'ask_memory_confirmation',description:'当前查询相关资料出现 pending 候选时，请设备用准确原文询问一次；只能用本轮 read_local_context 返回的候选 id，不替用户确认。',parameters:{type:'object',properties:{memory_id:{type:'string'}},required:['memory_id']}},
+  ];
+  request.session.instructions+='\n- 多个普通爱好、喜欢的食物或饮品可以并存；最喜欢、只喜欢、改成和项目名称等有冲突时由设备确认。询问已存资料而遇到相关 pending，可调用 ask_memory_confirmation；设备负责提问和保存结果播报。用户未回答或暂不确认，不反复问，也不以候选覆盖旧值。不要代替用户回答确认问题。';
+  return request;
 }
 
 export class MemoryTools {
-  constructor(store,history,{onResult=()=>{}}={}){
-    this.store=store;this.history=history;this.onResult=onResult;this.ready=false;
-    this.gate=new ToolTurnGate(['read_local_context','remember_user_fact'],{validate:(name,args)=>{
+  constructor(store,history,{onResult=()=>{},onFeedback=()=>{}}={}){
+    this.store=store;this.history=history;this.onResult=onResult;this.onFeedback=onFeedback;this.ready=false;this.offeredIds=new Set();this.currentOffer=null;this.wroteThisTurn=false;
+    this.gate=new ToolTurnGate(['read_local_context','remember_user_fact','ask_memory_confirmation'],{validate:(name,args)=>{
       if(name==='read_local_context')return typeof args.query==='string'&&args.query.trim()&&args.query.length<=300&&Object.keys(args).every(k=>k==='query');
+      if(name==='ask_memory_confirmation')return typeof args.memory_id==='string'&&/^[a-f0-9]{24}$/.test(args.memory_id)&&Object.keys(args).every(k=>k==='memory_id');
       return typeof args.key==='string'&&typeof args.quote==='string'&&args.quote.length<=600&&['profile','cross_session'].includes(args.layer)&&Object.keys(args).every(k=>['key','layer','quote'].includes(k));
     }});
   }
-  userStarted(){this.ready=false;this.gate.nextTurn();}
+  userStarted(){this.ready=false;this.wroteThisTurn=false;this.offeredIds.clear();this.gate.nextTurn();}
   userCompleted(){this.ready=true;}
   close(){this.ready=false;this.gate.close();}
+  reply(){
+    const pending=this.currentOffer;this.currentOffer=null;
+    const request=this.history.session.entries.filter(e=>e.role==='user').at(-1);
+    if(!pending||!confirmationDecision(request?.text))return null;
+    this.wroteThisTurn=true;
+    try{return this.store.resolveConfirmation(pending.memoryId,pending.offer.token,this.history.session.id,request.id);}
+    catch{return {status:'failed'};}
+  }
+  offer(result,explicit){
+    const request=this.history.session.entries.filter(e=>e.role==='user').at(-1);
+    const offered=this.store.offerConfirmation(result.memoryId,this.history.session.id,request.id,{explicit});
+    if(offered.status==='confirmation_required')this.currentOffer=offered;
+    return offered;
+  }
   handle(item){
     if(!this.ready)return null;
     const ticket=this.gate.register(item);
@@ -35,17 +54,30 @@ export class MemoryTools {
     }
     let result;
     try{
-      if(ticket.name==='read_local_context')result=this.store.search(ticket.args.query);
+      if(ticket.name==='read_local_context'){
+        result=this.store.search(ticket.args.query);for(const m of result.pending)this.offeredIds.add(m.id);
+      }else if(this.wroteThisTurn)result={status:'rejected',reason:'already_handled_this_turn'};
+      else if(ticket.name==='ask_memory_confirmation'){
+        this.wroteThisTurn=true;
+        result=this.offeredIds.has(ticket.args.memory_id)?this.offer({memoryId:ticket.args.memory_id},false):{status:'rejected',reason:'candidate_not_in_current_query'};
+      }
       else{
+        this.wroteThisTurn=true;
         const session=this.history.session,users=session.entries.filter(e=>e.role==='user'),request=users.at(-1);
         const referenceOnly=/^(?:请|请你|帮我)?\s*记住这个[。！!\s]*$/u.test(request?.text||'');
         const source=(referenceOnly?users.slice(-2,-1):users.slice(-1)).find(e=>e.text.includes(ticket.args.quote));
         if(request?.memoryExcluded)result={status:'excluded',reason:'用户要求本句不沉淀长期记忆，本句不会提炼或写入长期记忆。'};
         else if(!explicitRemember(request?.text))result={status:'deferred',reason:'本轮没有明确立即保存请求；继续自然聊天，结束后尝试后台提炼，无需重说或确认。'};
         else if(!source)result={status:'rejected',reason:'请明确要记住的用户原话，未写入记忆。'};
-        else result=this.store.remember(session.id,{...ticket.args,source_entry_id:source.id},request.id);
+        else {
+          result=this.store.remember(session.id,{...ticket.args,source_entry_id:source.id},request.id);
+          if(result.status==='pending_confirmation')result=this.offer(result,true);
+        }
       }
     }catch{result={status:'failed',reason:'记忆未成功写入或读取，请勿声称已保存。'};}
-    const message=this.gate.complete(ticket,result);this.onResult({tool:ticket.name,status:result.status||'retrieved',count:result.memories?.length??null});return message;
+    const publicResult=result.offer?{status:result.status,memoryId:result.memoryId,question:result.offer.question}:result;
+    const message=this.gate.complete(ticket,publicResult);this.onResult({tool:ticket.name,status:result.status||'retrieved',count:result.memories?.length??null});
+    if(message&&ticket.name!=='read_local_context'&&result.reason!=='already_handled_this_turn')this.onFeedback(result);
+    return message;
   }
 }

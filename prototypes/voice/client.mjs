@@ -1,7 +1,7 @@
 import { PCMPlayer,PlaybackReceipts } from './playback.mjs';
 import { SessionLifecycle } from './lifecycle.mjs';
 import { TurnTiming } from './timing.mjs';
-const CLIENT_BUILD='voice-web-20261030';
+const CLIENT_BUILD='voice-memory-confirmation-20261030';
 const el=id=>document.getElementById(id);
 let socket,wakeSocket,stream,inputContext,outputContext,capture,player;
 let generation=0,voiceGeneration=0,phase='disabled',ready=false,diagnostic=false;
@@ -121,6 +121,11 @@ function beginCloud(ticket=null){
           send({type:'audio',audio:prebuffer.shift()});
         },10);
       }else if(e.type==='local.end'){endChat('按语音要求结束聊天');}
+      else if(e.type==='local.memory_result'){
+        clearAudio();pendingAudio=false;assistantText='';el('assistant').textContent='';face('thinking');
+      }else if(e.type==='local.memory_speech_failed'){
+        clearAudio();lifecycle.interrupted();face('listening');
+      }
       else if(e.type==='local.waiting'){
         lifecycle.inputCompleted('等一下，我想想');clearAudio();pendingAudio=true;face('listening');
         status('安静等待 · 最多 10 分钟，你开口后继续');

@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node prototypes/expression/server.mjs",
     "voice": "node prototypes/voice/server.mjs",
+    "voice:memory-test": "node prototypes/evaluation/serve-memory-sandbox.mjs",
     "voice:probe": "node prototypes/voice/probe.mjs",
     "voice:eval": "node prototypes/evaluation/run.mjs",
     "voice:eval:ark": "node prototypes/evaluation/run-ark.mjs",

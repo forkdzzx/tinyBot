@@ -12,8 +12,10 @@ import { attachWakeChannel, WakeGrants } from './wake-channel.mjs';
 import {MemoryStore,HistoryRecorder} from '../memory/store.mjs';
 import {MemoryWorker} from '../memory/worker.mjs';
 import {memorySession,MemoryTools,MEMORY_PROMPT_ID} from '../memory/tools.mjs';
+import {explicitRemember} from '../memory/policy.mjs';
+import {memorySpeech,streamMemorySpeech} from './memory-speech.mjs';
 
-export function createVoiceServer({config,endpoint=ENDPOINT,port=8766,memoryRoot=fileURLToPath(new URL('../../runtime/data/',import.meta.url)),withWake=true,extract}={}){
+export function createVoiceServer({config,endpoint=ENDPOINT,port=8766,memoryRoot=fileURLToPath(new URL('../../runtime/data/',import.meta.url)),withWake=true,extract,speak=streamMemorySpeech,memorySandbox=false}={}){
 let store,worker;
 function initializeMemory(){
 store=new MemoryStore(memoryRoot);
@@ -40,7 +42,8 @@ const server = http.createServer(async(req,res)=> {
   const asset=files.get(req.url);
   if(req.headers.host !== host || req.method !== 'GET' || !asset) return res.writeHead(404).end();
   try {
-    const body=await readFile(new URL(asset[0],import.meta.url));
+    let body=await readFile(new URL(asset[0],import.meta.url));
+    if(memorySandbox&&req.url==='/')body=body.toString().replace('<h1>Jarvis · 实时语音验证</h1>','<h1>Jarvis · 隔离记忆测试</h1><p role="note"><strong>这里使用独立测试记忆，不会改动你的个人记忆。可以使用下面教程中的虚构偏好；仍会调用云端服务。</strong></p>');
     res.writeHead(200,{'Content-Type':asset[1],'Cache-Control':'no-store',
       'Content-Security-Policy':`default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'`,
       'Permissions-Policy':'microphone=(self), camera=()', 'X-Content-Type-Options':'nosniff'}).end(body);
@@ -64,6 +67,8 @@ wss.on('connection',client=> {
   let creationTimer, closeTimer, cancelTimer;
   let paused=false, lastHeartbeat=Date.now();
   let history=null,memoryTools=null,historyFinished=false;
+  let memoryOwned=false,memorySpeechAbort=null,memoryFeedbackTimer=null,turnRevision=0;
+  let mainTurnDone=false,contextFeedback=null;
   const guard=new ResponseGuard();
   const started=performance.now();
   const send=e=>client.readyState===WebSocket.OPEN && client.send(JSON.stringify(e));
@@ -80,6 +85,7 @@ wss.on('connection',client=> {
   function stop(reason='client_end') {
     if(closing) return;
     closing=true; ready=false;
+    memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);
     finishHistory(reason);
     clearTimeout(creationTimer); clearTimeout(cancelTimer); clearInterval(watchdog);
     cloud({type:'session.close'});
@@ -100,6 +106,42 @@ wss.on('connection',client=> {
     cloud({type:'response.cancel'});
     log({type:'local.interrupted'});
     cancelTimer=setTimeout(()=>fail('打断确认超时，请重新开始会话'),5000);
+  }
+  function syncMemoryWording(){
+    if(!closing&&mainTurnDone&&contextFeedback?.complete){
+      cloud({type:'conversation.item.create',items:[{role:'assistant',content:[{type:'input_text',text:contextFeedback.text}]}]});contextFeedback=null;
+    }
+  }
+  function localMemoryFeedback(result){
+    if(closing)return;
+    memoryOwned=true;clearTimeout(memoryFeedbackTimer);memorySpeechAbort?.abort();
+    const revision=turnRevision,id=`memory-${randomUUID()}`,text=memorySpeech(result);
+    const controller=new AbortController();memorySpeechAbort=controller;
+    contextFeedback={text,complete:false};
+    // Clear any speculative conversation audio before sending authoritative text.
+    send({type:'local.memory_result',status:result.status,message:text});
+    try{
+      if(result.status==='confirmation_required')store.bindConfirmation(result.memoryId,result.offer.token,id);
+      const event={type:'response.output_text.done',response_id:id,text};
+      history?.output(event,{source:'local_memory'});send(event);log({...event,source:'local_memory'});
+    }catch{fail('确认状态或文字历史保存失败，请保留文件排查');return;}
+    speak({config,text,responseId:id,signal:controller.signal,onEvent:event=>{
+      if(closing||revision!==turnRevision||controller.signal.aborted)return;
+      try{
+        if(event.type==='response.output_audio.started')history?.output(event,{source:'local_memory'});
+        send(event);if(event.type!=='response.output_audio.delta')log({...event,source:'local_memory'});
+      }catch{fail('记忆播报状态保存失败');}
+    },onUsage:usage=>log({type:'local.memory_speech_usage',usage})}).then(()=>{
+      if(closing||revision!==turnRevision||controller.signal.aborted)return;
+      // Keep the latest assistant wording in cloud context aligned with the
+      // host-controlled reply; the next personal query still reads the store.
+      if(contextFeedback){contextFeedback.complete=true;syncMemoryWording();}
+    }).catch(()=>{
+      if(closing||revision!==turnRevision||controller.signal.aborted)return;
+      log({type:'local.memory_speech_failed',status:result.status});
+      send({type:'local.notice',message:`语音播报暂时失败。${text}`});
+      send({type:'local.memory_speech_failed'});
+    });
   }
   const watchdog=setInterval(()=>{if(Date.now()-lastHeartbeat>45000)stop();},10000);
   client.on('message',data=> {
@@ -128,7 +170,7 @@ wss.on('connection',client=> {
       try{
         if(e.mode!=='diagnostic'){
           history=new HistoryRecorder(store,e.mode==='manual'?'manual':'wake');
-          memoryTools=new MemoryTools(store,history,{onResult:result=>log({type:'local.memory_tool',...result})});
+          memoryTools=new MemoryTools(store,history,{onResult:result=>log({type:'local.memory_tool',...result}),onFeedback:localMemoryFeedback});
           log({type:'local.history',sessionId:history.session.id});
         }
       }catch{fail('无法创建正式文字历史，请检查本地存储');return;}
@@ -169,6 +211,7 @@ wss.on('connection',client=> {
         }
         if(closing) return;
         if(event.type==='conversation.item.input_audio_transcription.started') {
+          turnRevision++;memoryOwned=false;memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);mainTurnDone=false;contextFeedback=null;
           paused=false;
           memoryTools?.userStarted();history?.interrupt();
           send({type:'local.user_started'});
@@ -183,9 +226,19 @@ wss.on('connection',client=> {
             paused=true;if(guard.active)cancel();
             send({type:'local.waiting'});log({type:'local.waiting'});
           }
+          if(!command&&history){
+            const reply=memoryTools.reply();
+            if(reply)localMemoryFeedback(reply);
+            else if(explicitRemember(text)){
+              memoryOwned=true;
+              const revision=turnRevision;
+              memoryFeedbackTimer=setTimeout(()=>{if(!closing&&revision===turnRevision){memoryTools.wroteThisTurn=true;localMemoryFeedback({status:'not_called'});}},8000);
+            }
+          }
         }
         if(event.type==='response.canceled') clearTimeout(cancelTimer);
         if(!guard.accept(event)) return;
+        if(memoryOwned&&event.type.startsWith('response.output_'))return;
         if(paused&&event.type.startsWith('response.output_'))return;
         if(event.type==='response.function_call_arguments.done'){
           if(!paused)for(const item of (event.items||[]).slice(0,4)){const result=memoryTools?.handle(item);if(result)cloud(result);}
@@ -200,6 +253,7 @@ wss.on('connection',client=> {
             log(out);
           }
         } else if(event.type==='response.done') {
+          mainTurnDone=true;syncMemoryWording();
           log({type:event.type,usage:event.response?.usage ?? null});
           send({type:'local.usage',usage:event.response?.usage ?? null});
         }
@@ -214,7 +268,11 @@ wss.on('connection',client=> {
         audioFrames++;cloud({type:'input_audio_buffer.append',audio:e.audio});
       } else if(e.type==='unmute') cloud({type:'input_audio_unmute.commit'});
       else if(e.type==='mute') cloud({type:'input_audio_mute.commit'});
-      else if(e.type==='interrupt'){try{history?.interrupt();cancel();}catch{fail('历史保存失败');}}
+      else if(e.type==='interrupt'){try{
+        memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);contextFeedback=null;
+        if(memoryTools)memoryTools.wroteThisTurn=true;
+        history?.interrupt();cancel();
+      }catch{fail('历史保存失败');}}
       else if(e.type==='greeting') {
         log({type:'local.greeting'});
         cloud({type:'speech_text_buffer.commit',text:'你好，我是 Jarvis。现在可以开始聊天了。'});
