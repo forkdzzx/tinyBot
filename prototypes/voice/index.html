@@ -8,6 +8,7 @@
 <p>点击“开始聊天”后连接豆包，看到“可以直接讲话”即可连续交流，无需喊唤醒词或每轮按键。结束后关闭麦克风和云连接，下次再点击开始。只保存文字与事件日志，不保存录音。</p>
 <div class="face" id="face" data-state="idle"><div class="eye"></div><div class="eye"></div></div>
 <div id="status" role="status">未连接 · 麦克风关闭</div>
+<p id="mode" aria-live="polite">当前模式：连接后显示</p>
 <p id="wake-input" aria-live="polite"></p>
 <div><button id="direct">开始聊天</button><button id="end" disabled>结束聊天</button><button id="interrupt" disabled>打断播报</button><button id="stop" disabled>关闭交互</button></div>
 <details><summary>实验与诊断</summary><p>Hi Jarvis 仅为可选实验，识别仍不稳定；其余四条短句和稳定唤醒延期至 V2。启用后待机声音仅在本机处理；实验聊天结束后返回本地监听，点击“关闭交互”可关闭麦克风，再使用上方“开始聊天”。</p><button id="start">启用 Hi Jarvis 实验</button><button id="wake-test">只测 Hi Jarvis（不连云端）</button><button id="greet">测试一句问候（不启用麦克风）</button></details>

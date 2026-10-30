@@ -22,7 +22,9 @@
 - [定向短测（已完成）](docs/memory-repair-short-test.md)
 - [最新真人反馈与口语前缀修复（2026-10-30）](docs/spoken-intent-feedback-2026-10-30.md)
 - [记忆确认、并存偏好与测试证据（2026-10-30）](docs/memory-confirmation-2026-10-30.md)
-- [独立记忆确认短测（待试听）](docs/memory-confirmation-short-test.md)
+- [独立记忆确认短测（已结束）](docs/memory-confirmation-short-test.md)
+- [确认短测的原始失败与用户反馈](docs/memory-confirmation-feedback-2026-10-30.md)
+- [最新更正、记忆范围与打断后回复修复](docs/memory-correction-2026-10-30.md)
 - [本地唤醒漏检诊断（已完成）](docs/local-wake-diagnosis.md)
 - [本地唤醒漏检分析](docs/wake-review-2026-10-25.md)
 - [本地唤醒与会话流程短测（暂停）](docs/local-wake-test.md)
@@ -74,7 +76,7 @@ npm run voice
 
 已接入正式文字历史和最小跨会话记忆，后台提炼复用 `runtime/ark.env`（本机已配置）。历史与记忆存于 `runtime/data/`，不保存录音；维护方式见[实现记录](docs/memory-implementation-2026-10-27.md)。[10-29 真人短测](docs/memory-feedback-2026-10-29.md)确认跨会话读取有效、自然度改善；[10-30 反馈](docs/spoken-intent-feedback-2026-10-30.md)后的口语前缀已修复，用户反馈没有明显长等待，正式量化延迟仍待验收。
 
-最新[记忆确认流程](docs/memory-confirmation-2026-10-30.md)支持并存爱好、受控保存播报和确认替换／拒绝／延期；89 项单元检查及定向真实合成通过，复杂语义冲突和真人新流程体验尚未完成。运行 `npm run voice:memory-test` 可在 **8767** 开启独立记忆测试页，按[三分钟步骤](docs/memory-confirmation-short-test.md)试听，虚构偏好不会写入个人数据。四模式、搜索、主动搭话与实体硬件仍未接入。
+最新[记忆确认流程](docs/memory-confirmation-2026-10-30.md)支持并存爱好、受控保存播报和确认替换／拒绝／延期；89 项单元检查及定向真实合成通过，最新[真人反馈](docs/memory-confirmation-feedback-2026-10-30.md)已齐：等待与表达可以接受，乌龙茶是主动打断。[后续修复](docs/memory-correction-2026-10-30.md)已补更正、有限属性键／限定范围及否定追问，101 项检查与服务回放通过；云端分句／错字和最终真人验收仍待观察，下一步继续模式。运行 `npm run voice:memory-test` 可在 **8767** 开启独立记忆测试页，虚构偏好不会写入个人数据；[本轮短测](docs/memory-confirmation-short-test.md)已结束，暂不重复。四模式、搜索、主动搭话与实体硬件仍未接入。
 
 ```sh
 npm run voice:probe -- --greeting

@@ -1,7 +1,7 @@
 import {mkdirSync,readFileSync,readdirSync,openSync,writeFileSync,fsyncSync,closeSync,renameSync,unlinkSync,existsSync} from 'node:fs';
 import {join,dirname} from 'node:path';
 import {randomUUID,createHash} from 'node:crypto';
-import {explicitRemember,sessionOnlyMemory,additivePreference,confirmationDecision,memoryQuoteCore} from './policy.mjs';
+import {explicitRemember,sessionOnlyMemory,additivePreference,confirmationDecision,memoryQuoteCore,memoryIdentity,memoryConflicts,favoriteDrinkQuestion} from './policy.mjs';
 export {explicitRemember} from './policy.mjs';
 
 const now=()=>new Date().toISOString();
@@ -70,11 +70,11 @@ export class MemoryStore {
     if(!candidate||!['cross_session','profile'].includes(candidate.layer)||!['fact','observation'].includes(candidate.kind)||typeof candidate.key!=='string'||!/^[\p{L}\p{N}_.-]{2,80}$/u.test(candidate.key)||typeof candidate.quote!=='string'||candidate.quote.trim().length<4||candidate.quote.length>600)throw new Error('Invalid memory candidate');
     const source=session.entries.find(e=>e.id===candidate.source_entry_id&&e.role==='user'&&allowedIds.has(e.id));
     if(!source||source.memoryExcluded||!source.text.includes(candidate.quote))throw new Error('Memory source is not user evidence');
-    return {key:candidate.key.toLowerCase(),layer:candidate.layer,kind:candidate.kind,text:candidate.quote,sessionOnly:sessionOnlyMemory(candidate.quote,source.text),additive:additivePreference(candidate.key.toLowerCase(),candidate.quote,source.text),
+    return {...memoryIdentity(candidate.key,candidate.quote,source.text),layer:candidate.layer,kind:candidate.kind,text:candidate.quote,sessionOnly:sessionOnlyMemory(candidate.quote,source.text),
       source:{sessionId:session.id,entryId:source.id,quote:candidate.quote,at:source.at}};
   }
   addTo(state,candidate,origin){
-    const retired=state.memories.find(m=>m.key===candidate.key&&['rejected','superseded','excluded'].includes(m.status)&&m.sources.some(s=>s.sessionId===candidate.source.sessionId&&s.entryId===candidate.source.entryId));
+    const retired=state.memories.find(m=>memoryIdentity(m.key,m.text).key===candidate.key&&['rejected','superseded','excluded'].includes(m.status)&&m.sources.some(s=>s.sessionId===candidate.source.sessionId&&s.entryId===candidate.source.entryId));
     if(retired)return {status:retired.status==='excluded'?'excluded':'inactive',memoryId:retired.id};
     const matches=state.memories.filter(m=>clean(memoryQuoteCore(m.text))===clean(memoryQuoteCore(candidate.text)));
     const identical=matches.find(m=>['confirmed','pending_confirmation','excluded'].includes(m.status))||matches.find(m=>m.sources.some(s=>s.sessionId===candidate.source.sessionId&&s.entryId===candidate.source.entryId));
@@ -84,13 +84,12 @@ export class MemoryStore {
       if(!identical.sources.some(s=>s.sessionId===candidate.source.sessionId&&s.entryId===candidate.source.entryId))identical.sources.push(candidate.source);
       return {status:identical.status==='confirmed'?'already_saved':'pending_confirmation',memoryId:identical.id};
     }
-    const collision=state.memories.filter(m=>m.key===candidate.key&&m.status==='confirmed');
-    const compatible=candidate.additive&&collision.every(m=>m.additive??additivePreference(m.key,m.text));
+    const collision=state.memories.filter(m=>m.status==='confirmed'&&memoryConflicts(candidate,m));
     // First release is deliberately conservative: observations and conflicting
     // values remain candidates. No inferred personality or silent replacement.
-    const conflict=collision.length>0&&!compatible;
+    const conflict=collision.length>0;
     const pending=conflict||candidate.kind==='observation'||/^project[._-]|项目(?:名|代号)/u.test(candidate.key);
-    const memory={id:idFor(`${candidate.key}\0${candidate.text}${matches.length?'\0'+candidate.source.entryId:''}`),key:candidate.key,layer:candidate.layer,kind:candidate.kind,text:candidate.text,additive:candidate.additive,
+    const memory={id:idFor(`${candidate.key}\0${candidate.text}${matches.length?'\0'+candidate.source.entryId:''}`),key:candidate.key,layer:candidate.layer,kind:candidate.kind,text:candidate.text,additive:candidate.additive,preferenceKind:candidate.preferenceKind,correction:candidate.correction,
       status:pending?'pending_confirmation':'confirmed',reason:conflict?'possible_conflict':candidate.kind==='observation'?'observation_unverified':pending?'project_name_confirmation':null,
       conflicts:conflict?collision.map(m=>m.id):[],
       sources:[candidate.source],createdAt:now(),origin};
@@ -99,7 +98,7 @@ export class MemoryStore {
   offerConfirmation(id,sessionId,requestEntryId,{explicit=false}={}){
     const session=this.readSession(sessionId),request=session.entries.filter(e=>e.role==='user').at(-1),m=this.state.memories.find(m=>m.id===id);
     if(session.status!=='active'||request?.id!==requestEntryId||!m||m.status!=='pending_confirmation'||m.kind!=='fact')return {status:'rejected'};
-    const old=this.state.memories.filter(x=>x.key===m.key&&x.status==='confirmed');
+    const old=this.state.memories.filter(x=>x.status==='confirmed'&&memoryConflicts(m,x));
     if(m.lastOffer&&(m.lastOffer.sessionId===sessionId||!explicit))return {status:'pending_confirmation',memoryId:id,reason:'already_asked',current:old.length===1&&old[0].text.length<=120?old[0].text:null};
     if(m.text.length>120||old.length>3||old.reduce((n,x)=>n+x.text.length,0)>100)return {status:'needs_detail',memoryId:id};
     const previous=old.length?`之前记的是${old.map(x=>`“${x.text}”`).join('、')}。`:'';
@@ -112,12 +111,12 @@ export class MemoryStore {
   bindConfirmation(id,token,responseId){
     this.commit(s=>{const m=s.memories.find(m=>m.id===id);if(!m?.lastOffer||m.lastOffer.token!==token)throw new Error('Stale confirmation');m.lastOffer.responseId=responseId;});
   }
-  resolveConfirmation(id,token,sessionId,userEntryId){
+  resolveConfirmation(id,token,sessionId,userEntryId,{deferUnclear=false}={}){
     const session=this.readSession(sessionId),users=session.entries.filter(e=>e.role==='user'),request=users.at(-1),m=this.state.memories.find(m=>m.id===id),offer=m?.lastOffer;
-    const decision=confirmationDecision(request?.text);
+    const decision=confirmationDecision(request?.text)||(deferUnclear&&favoriteDrinkQuestion(request?.text)?'unclear':null);
     const spoken=session.entries.find(e=>e.role==='assistant'&&e.responseId===offer?.responseId);
-    if(session.status!=='active'||m?.status!=='pending_confirmation'||!offer||offer.resolved||offer.token!==token||offer.sessionId!==sessionId||request?.id!==userEntryId||users.at(-2)?.id!==offer.requestEntryId||!decision||spoken?.source!=='local_memory'||spoken.text!==offer.question||spoken.playback!=='completed')return {status:'rejected',reason:'no_current_heard_question'};
-    const current=this.state.memories.filter(x=>x.key===m.key&&x.status==='confirmed').map(x=>x.id).sort();
+    if(session.status!=='active'||m?.status!=='pending_confirmation'||!offer||offer.resolved||offer.token!==token||offer.sessionId!==sessionId||request?.id!==userEntryId||users.at(-2)?.id!==offer.requestEntryId||!decision||spoken?.source!=='local_memory'||spoken.text!==offer.question||(decision==='accept'&&spoken.playback!=='completed'))return {status:'rejected',reason:'no_current_heard_question'};
+    const current=this.state.memories.filter(x=>x.status==='confirmed'&&memoryConflicts(m,x)).map(x=>x.id).sort();
     if(JSON.stringify(current)!==JSON.stringify(offer.expectedIds))return {status:'stale',reason:'memory_changed'};
     this.commit(s=>{
       const target=s.memories.find(m=>m.id===id);
@@ -128,7 +127,7 @@ export class MemoryStore {
         target.status='confirmed';target.reason=null;
       }else if(decision==='reject'){target.status='rejected';target.reason='user_rejected';}
     });
-    return {status:decision==='accept'?'saved':decision==='reject'?'kept_existing':'deferred_confirmation',memoryId:id};
+    return {status:decision==='accept'?'saved':decision==='reject'?'kept_existing':decision==='unclear'?'unconfirmed':'deferred_confirmation',memoryId:id};
   }
   reconcileAdditivePreferences({dryRun=false}={}){
     const eligible=this.state.memories.filter(m=>m.status==='pending_confirmation'&&m.reason==='possible_conflict'&&m.kind==='fact'&&!m.lastOffer&&
@@ -163,11 +162,21 @@ export class MemoryStore {
     if(memory.status==='excluded')return false;
     this.commit(s=>{const m=s.memories.find(m=>m.id===id);m.previousStatus=m.status;m.status='excluded';m.reason=reason;m.excludedAt=now();});return true;
   }
+  favoriteDrinkReply(query){
+    if(!favoriteDrinkQuestion(query))return null;
+    const active=this.state.memories.filter(m=>m.status==='confirmed'&&memoryIdentity(m.key,m.text).key==='preference.drink');
+    const favorites=active.filter(m=>(m.preferenceKind??memoryIdentity(m.key,m.text).preferenceKind)==='favorite');
+    const ambiguous=active.some(m=>m.preferenceKind===undefined&&memoryIdentity(m.key,m.text).correction&&active.some(other=>other.id!==m.id&&memoryConflicts(m,other)));
+    if(ambiguous||favorites.length>1)return '饮品记录里有需要核对的不同说法，我暂时不能确定你目前最喜欢哪一种。';
+    if(favorites.length===1&&favorites[0].text.length<=120)return `你确认过：“${memoryQuoteCore(favorites[0].text).replace(/[。.!！]+$/u,'')}”。`;
+    if(favorites.length)return '有一条已确认的饮品偏好，但内容较长，需要先核对具体范围。';
+    return '目前还没有明确确认你最喜欢喝哪种饮品；普通的“喜欢”记录不能当成“最喜欢”。';
+  }
   search(query){
     if(typeof query!=='string'||!query.trim()||query.length>300)throw new Error('Invalid retrieval query');
     const q=tokens(query);
     const scored=this.state.memories.filter(m=>['confirmed','pending_confirmation'].includes(m.status)).map(m=>{const t=tokens(`${m.text} ${m.key} ${TOPICS[m.key]||''}`);let overlap=0;for(const x of q)if(t.has(x))overlap++;return {m,score:overlap*(m.layer==='profile'?1.15:1)};}).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
-    const selected=scored.slice(0,6).map(({m})=>({id:m.id,key:m.key,layer:m.layer,text:m.text,status:m.status,reason:m.reason,source:{sessionId:m.sources[0].sessionId,entryId:m.sources[0].entryId,at:m.sources[0].at}}));
+    const selected=scored.slice(0,6).map(({m})=>({id:m.id,key:memoryIdentity(m.key,m.text).key,preferenceKind:m.preferenceKind??memoryIdentity(m.key,m.text).preferenceKind,layer:m.layer,text:m.text,status:m.status,reason:m.reason,source:{sessionId:m.sources[0].sessionId,entryId:m.sources[0].entryId,at:m.sources[0].at}}));
     return {revision:this.state.revision,memories:selected.filter(m=>m.status==='confirmed'),pending:selected.filter(m=>m.status!=='confirmed'),retrieval:'lexical_v1',scope:'related_user_statements_only'};
   }
 }
@@ -193,7 +202,7 @@ export class HistoryRecorder {
   interrupt(){
     if(this.ended)return;let changed=false;
     for(const e of this.session.entries)if(e.role==='assistant'&&!['completed','interrupted'].includes(e.playback)){
-      e.playback='interrupted';if(e.generation==='streaming')e.generation='interrupted';changed=true;
+      e.playback='interrupted';e.playbackInterruptedAt=now();if(e.generation==='streaming')e.generation='interrupted';changed=true;
     }
     if(changed)this.persist();
   }

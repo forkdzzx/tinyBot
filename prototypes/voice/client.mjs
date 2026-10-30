@@ -1,7 +1,7 @@
 import { PCMPlayer,PlaybackReceipts } from './playback.mjs';
 import { SessionLifecycle } from './lifecycle.mjs';
 import { TurnTiming } from './timing.mjs';
-const CLIENT_BUILD='voice-memory-confirmation-20261030';
+const CLIENT_BUILD='voice-modes-20261030';
 const el=id=>document.getElementById(id);
 let socket,wakeSocket,stream,inputContext,outputContext,capture,player;
 let generation=0,voiceGeneration=0,phase='disabled',ready=false,diagnostic=false;
@@ -106,6 +106,7 @@ function beginCloud(ticket=null){
     try{
       const e=JSON.parse(data);eventType=e.type;
       if(e.type!=='response.output_audio.delta')log(e.type);
+      if(e.type==='local.mode_state'){el('mode').textContent=`当前模式：${e.name}${e.autoLocked?' · 本次不自动切换':''}${e.announcement?' · '+e.announcement:''}`;return;}
       if(e.type==='local.closed'){socket.close();return;}
       if(e.type==='local.error'){endChat(e.message);return;}
       if(phase==='ending')return;

@@ -47,6 +47,13 @@ try{
   let from=await input('请记住，我最喜欢红茶',args('我最喜欢红茶'));assert.equal((await completed(from)).status,'saved');
   from=await input('请记住，我现在最喜欢绿茶',args('我现在最喜欢绿茶'));assert.equal((await completed(from)).status,'confirmation_required');
   from=await input('是的，按新的计');assert.equal((await completed(from)).status,'saved');assert.equal(app.store.search('喝什么').memories[0].text,'我现在最喜欢绿茶');
+  held=null;holdSpeech=true;from=await input('请记住，我现在最喜欢乌龙茶',args('我现在最喜欢乌龙茶'));await wait(()=>held);
+  ws.send(JSON.stringify({type:'interrupt'}));await delay(30);const oldHeld=held;holdSpeech=false;
+  from=await input('现不改。那我目前最喜欢喝的是什么茶？');oldHeld();
+  const deferred=await completed(from);assert.equal(deferred.status,'deferred_confirmation');assert.match(deferred.message,/先不改.*绿茶/);assert.doesNotMatch(deferred.message,/乌龙茶/);
+  from=await input('我最喜欢喝什么茶？');assert.equal((await completed(from)).status,'recalled');
+  from=await input('请记住，我现在最喜欢黑茶',args('我现在最喜欢黑茶'));assert.equal((await completed(from)).status,'confirmation_required');
+  from=await input('心不改，那我目前最喜欢喝的是什么茶？');const unclear=await completed(from);assert.equal(unclear.status,'unconfirmed');assert.match(unclear.message,/没有完成确认.*绿茶/);
   const original=app.store.write;app.store.write=(p,v)=>{if(p.endsWith('memory.json'))throw new Error('disk');original(p,v);};
   from=await input('请记住，我喜欢吃苹果',{key:'preference.food',layer:'profile',quote:'我喜欢吃苹果'});assert.equal((await completed(from)).status,'failed');app.store.write=original;
   assert.ok(!events.some(e=>e.text==='已经保存了错误的内容'||e.response_id?.startsWith('untrusted-')));
@@ -60,5 +67,5 @@ try{
   await wait(()=>events.slice(from).some(e=>e.type==='local.memory_speech_failed'));
   assert.ok(events.slice(from).some(e=>e.type==='local.notice'&&e.message.includes('语音播报暂时失败')));
   ws.send(JSON.stringify({type:'stop'}));await wait(()=>ws.readyState===WebSocket.CLOSED);
-  console.log(JSON.stringify({saved:true,confirmedReplacement:true,failedWriteNeverSpokeSuccess:true,speculativeProviderOutputBlocked:true,interruptedHostAudioDropped:true,buttonInterruptStopsHostAudio:true,speechFailureFallsBackToText:true},null,2));
+  console.log(JSON.stringify({saved:true,confirmedReplacement:true,interruptedDeferAndQuestion:true,unclearReplyKeepsOldAndAnswers:true,scopedRecall:true,failedWriteNeverSpokeSuccess:true,speculativeProviderOutputBlocked:true,interruptedHostAudioDropped:true,buttonInterruptStopsHostAudio:true,speechFailureFallsBackToText:true},null,2));
 }finally{ws?.terminate();app.close();for(const c of upstream.clients)c.terminate();upstream.close();await delay(100);rmSync(root,{recursive:true,force:true});}

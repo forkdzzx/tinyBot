@@ -1,9 +1,9 @@
 import {ToolTurnGate} from '../voice/context-contract.mjs';
 import {sessionCreate} from '../voice/config.mjs';
 import {explicitRemember} from './store.mjs';
-import {confirmationDecision} from './policy.mjs';
+import {confirmationReply} from './policy.mjs';
 
-export const MEMORY_PROMPT_ID='voice-memory-v1.2-20261030';
+export const MEMORY_PROMPT_ID='voice-memory-v1.3-20261030';
 export function memorySession(voice){
   const request=sessionCreate(voice);
   request.session.instructions=request.session.instructions.replace(/^- 当前原型只支持对话和本次会话内的上下文；.*$/m,
@@ -15,6 +15,7 @@ export function memorySession(voice){
     {type:'function',name:'ask_memory_confirmation',description:'当前查询相关资料出现 pending 候选时，请设备用准确原文询问一次；只能用本轮 read_local_context 返回的候选 id，不替用户确认。',parameters:{type:'object',properties:{memory_id:{type:'string'}},required:['memory_id']}},
   ];
   request.session.instructions+='\n- 多个普通爱好、喜欢的食物或饮品可以并存；最喜欢、只喜欢、改成和项目名称等有冲突时由设备确认。询问已存资料而遇到相关 pending，可调用 ask_memory_confirmation；设备负责提问和保存结果播报。用户未回答或暂不确认，不反复问，也不以候选覆盖旧值。不要代替用户回答确认问题。';
+  request.session.instructions+='\n- “不，请记住……”是更正后提出保存请求，不是“不要记住”。所有饮品偏好统一用 preference.drink；不能使用 drink.favorite 等新键绕开确认。保持用户“喜欢”“最喜欢”“只喜欢”的原始限定，不因最近提到就升级为最喜欢。工具返回的 preferenceKind 说明限定范围；普通喜欢可与最喜欢并存，pending 更正不能作为有效偏好。';
   return request;
 }
 
@@ -33,10 +34,23 @@ export class MemoryTools {
   reply(){
     const pending=this.currentOffer;this.currentOffer=null;
     const request=this.history.session.entries.filter(e=>e.role==='user').at(-1);
-    if(!pending||!confirmationDecision(request?.text))return null;
+    const parsed=confirmationReply(request?.text);
+    const unclearReadback=!parsed&&this.store.favoriteDrinkReply(request?.text);
+    if(!pending||(!parsed&&!unclearReadback))return null;
     this.wroteThisTurn=true;
-    try{return this.store.resolveConfirmation(pending.memoryId,pending.offer.token,this.history.session.id,request.id);}
+    try{
+      const result=this.store.resolveConfirmation(pending.memoryId,pending.offer.token,this.history.session.id,request.id,{deferUnclear:!!unclearReadback});
+      this.onResult({tool:'resolve_memory_confirmation',status:result.status,count:null});
+      if(parsed?.followup&&['deferred_confirmation','kept_existing'].includes(result.status))result.readback=this.store.favoriteDrinkReply(parsed.followup);
+      if(result.status==='unconfirmed')result.readback=unclearReadback;
+      return result;
+    }
     catch{return {status:'failed'};}
+  }
+  recall(text){
+    const readback=this.store.favoriteDrinkReply(text);if(!readback)return null;
+    this.wroteThisTurn=true;this.onResult({tool:'read_favorite_drink',status:'recalled',count:null});
+    return {status:'recalled',readback};
   }
   offer(result,explicit){
     const request=this.history.session.entries.filter(e=>e.role==='user').at(-1);

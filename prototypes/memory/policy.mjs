@@ -8,7 +8,7 @@ export function explicitRemember(text) {
   // A self-correction can start with "不不不，我说的是". Only remove the
   // repeated interjection when it is immediately tied to a self-correction;
   // actual negative commands are still rejected above and by the grammar below.
-  let command=stripSpokenLeadIn(text).replace(/^(?:不[，,\s]*){1,4}(?=我说的是|我是说)/u,'');
+  let command=stripSpokenLeadIn(text).replace(/^(?:不[，,\s]*){1,4}(?=我说的是|我是说|(?:请你|请帮我|请|麻烦你|帮我)\s*记(?:住|一下|下))/u,'');
   command=command.replace(/^(?:(?:我想说一下|我想补充一下|还有一件事|另外|对了|我说的是|我是说)[，,。:：\s]*)*/u,'');
   return /^(?:(?:请你|请帮我|请|麻烦你|帮我)|你(?:也|还)?(?:要|得|需要))?\s*(?:记住|记一下|记下)(?!是什么意思|怎么|了吗|吗|了没)/u.test(command) ||
     /^(?:(?:by the way|also)[,.:\s]*)?(?:please\s+)?remember\b(?!\s+(?:what|how|when|why)\b)/iu.test(command);
@@ -40,12 +40,39 @@ export function sessionOnlyMemory(quote, sourceText = quote) {
 // These fields can contain several simultaneous likes. Unknown/scalar fields
 // remain conservative; an LLM cannot bypass a conflict by marking it additive.
 const COLLECTION_KEYS=new Set(['preference.hobby','preference.drink','preference.food','preference.sport','preference.game.genre','preference.music']);
-export function additivePreference(key,text,context=text){
-  return COLLECTION_KEYS.has(key)&&
-    /喜欢|爱好|偏爱|\b(?:like|enjoy|love)\b/iu.test(text)&&
-    !/不|讨厌|只|最|唯一|改成|换成|替换|不再|以前|曾经|过去|\b(?:not|no longer|only|favorite|favourite|instead|used to)\b/iu.test(context);
+export function memoryIdentity(key,text,sourceText=text){
+  let canonical=key.toLowerCase();
+  const clause=sourceText.split(/[，,。！？!?；;\n]/u).find(s=>s.includes(text))||text;
+  const drinkKey=/^(?:(?:user|profile)[._-])?(?:(?:preference|preferences)[._-])?(?:drink|beverage|tea)(?:[._-](?:favorite|favourite|preference|preferred))?$/u;
+  const drinkFact=/(?:喜欢|爱|偏好).{0,3}(?:喝|饮用).{0,16}(?:茶|咖啡|牛奶|果汁|可乐|汽水|白开水|矿泉水|豆浆)|\b(?:like|love|prefer|favourite|favorite).{0,25}\b(?:tea|coffee|milk|juice|drink|beverage)\b/iu;
+  if(drinkKey.test(canonical)||/^(?:favorite|favourite|preferred)[._-](?:drink|beverage|tea)$/u.test(canonical)||drinkFact.test(clause))canonical='preference.drink';
+  const correction=/^(?:不[，,\s]*){1,4}(?=我说的是|我是说|(?:请你|请帮我|请|麻烦你|帮我)\s*记(?:住|一下|下))/u.test(stripSpokenLeadIn(sourceText))||/改成|换成|替换|不再|\b(?:instead|no longer)\b/iu.test(sourceText);
+  let preferenceKind=null;
+  if(COLLECTION_KEYS.has(canonical)){
+    preferenceKind=/(?:不喜欢|不爱|讨厌|以前|曾经|过去|但是)|\b(?:not|used to)\b/iu.test(clause)?'other':
+      /只(?:喜欢|爱|喝)|唯一|\bonly\b/iu.test(clause)?'exclusive':
+      /最喜欢|最爱|\b(?:favorite|favourite)\b/iu.test(clause)?'favorite':
+      /喜欢|爱好|偏爱|\b(?:like|enjoy|love)\b/iu.test(clause)?'like':'other';
+  }
+  return {key:canonical,preferenceKind,correction,additive:preferenceKind==='like'&&!correction};
 }
-export function confirmationDecision(text){
+export function memoryConflicts(candidate,existing){
+  const a={...memoryIdentity(candidate.key,candidate.text),...candidate,key:memoryIdentity(candidate.key,candidate.text).key};
+  const b={...memoryIdentity(existing.key,existing.text),...existing,key:memoryIdentity(existing.key,existing.text).key};
+  if(a.key!==b.key)return false;
+  if(a.correction&&a.preferenceKind!=='favorite')return true;
+  if(['like','favorite'].includes(a.preferenceKind)&&['like','favorite'].includes(b.preferenceKind))return a.preferenceKind==='favorite'&&b.preferenceKind==='favorite';
+  return true;
+}
+export function additivePreference(key,text,context=text){
+  return memoryIdentity(key,text,context).additive;
+}
+export function favoriteDrinkQuestion(text){
+  return typeof text==='string'&&!/[“”"「」『』]|如果|假如|假设|他说|她说|记住/u.test(text)&&
+    /我|\bmy\b/iu.test(text)&&/最喜欢|最爱|\b(?:favorite|favourite)\b/iu.test(text)&&
+    /喝|茶|饮品|\b(?:tea|drink|beverage)\b/iu.test(text)&&/什么|哪|\bwhat\b/iu.test(text);
+}
+function simpleConfirmation(text){
   if(typeof text!=='string'||/[“”"「」『』?？]/u.test(text))return null;
   const s=stripSpokenLeadIn(text).toLowerCase().replace(/[\s\p{P}]/gu,'');
   // Within an outstanding heard memory question, ASR may transcribe 记 as 计.
@@ -54,6 +81,16 @@ export function confirmationDecision(text){
   if(/^(?:对的?|是的|没错|好的?|确认)(?:就?(?:按|用)(?:新的|这个|这条)(?:记|计|保存|更新|替换)(?:吧)?)?$/u.test(s))return 'accept';
   if(['对','对的','是的','没错','确认','确认更新','确认替换','按新的记','对按新的记','是的按新的记','用新的替换','是的用新的替换','yes','yesplease','confirm'].includes(s))return 'accept';
   if(['不','不是','不对','不要替换','保留原来的','按原来的记','no','keeptheoldone'].includes(s))return 'reject';
-  if(['先不改','以后再说','暂时不确认','先不确认','不确定','先放着','later','notsure','notnow'].includes(s))return 'defer';
+  if(['先不','先不要','暂时不','暂时不要','先不改','现不改','暂时不改','以后再说','暂时不确认','先不确认','不确定','先放着','later','notsure','notnow'].includes(s))return 'defer';
   return null;
 }
+export function confirmationReply(text){
+  const decision=simpleConfirmation(text);if(decision)return {decision,followup:null};
+  if(typeof text!=='string'||/[“”"「」『』]/u.test(text))return null;
+  const match=stripSpokenLeadIn(text).match(/^(先不改|现不改|暂时不改|先不|先不要|暂时不|暂时不要|保留原来的|不要替换)[，,。；;]\s*(.+)$/u);
+  // Only a bounded, read-only personal query can follow a negative decision.
+  // Do not treat compound affirmative or hypothetical sentences as approval.
+  if(!match||!favoriteDrinkQuestion(match[2]))return null;
+  return {decision:simpleConfirmation(match[1]),followup:match[2]};
+}
+export const confirmationDecision=text=>confirmationReply(text)?.decision||null;

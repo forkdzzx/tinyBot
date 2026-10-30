@@ -3,6 +3,10 @@ import {randomUUID} from 'node:crypto';
 import {ENDPOINT,sessionCreate} from './config.mjs';
 
 export function memorySpeech(result){
+  if(result.status==='mode_control')return result.message;
+  if(result.status==='unconfirmed')return `这次没有完成确认，先保留原记录。${result.readback||''}`;
+  if(result.status==='recalled')return result.readback;
+  if(result.readback&&['deferred_confirmation','kept_existing'].includes(result.status))return `${result.status==='deferred_confirmation'?'好，先不改。':'好，保留原来的记录。'}${result.readback}`;
   if(result.status==='pending_confirmation'&&result.current)return `目前记的是“${result.current}”。新说法还待确认，我先不改。`;
   const text={saved:'记住了，已经保存。',already_saved:'这条已经记着了。',kept_existing:'好，保留原来的记录。',deferred_confirmation:'好，先不改，保留原来的记录。',pending_confirmation:'这条仍待确认，原来的记录没有改。',session_only:'好，这次按你的要求来，不改长期偏好。',excluded:'这条不会写入长期记忆。',inactive:'这条是已停用的旧记录，未重新保存。',deferred:'嗯，我们接着聊。',needs_detail:'这条信息比较长，请把要确认的内容简短说一下。',stale:'记录刚有变化，这次先不改，稍后再确认。',failed:'这次没保存成功，先不算记住。',rejected:'这次没有更新记忆，先保留原记录。',not_called:'这次还没有完成保存，先不算记住。'}[result.status];
   return result.status==='confirmation_required'?result.offer.question:text||'这次没有更新记忆。';

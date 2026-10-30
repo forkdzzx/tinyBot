@@ -14,8 +14,11 @@ import {MemoryWorker} from '../memory/worker.mjs';
 import {memorySession,MemoryTools,MEMORY_PROMPT_ID} from '../memory/tools.mjs';
 import {explicitRemember} from '../memory/policy.mjs';
 import {memorySpeech,streamMemorySpeech} from './memory-speech.mjs';
+import {ModeController,loadSkills} from '../modes/controller.mjs';
+import {ModeTools,modeSessionRequest,MODE_PROMPT_ID} from '../modes/tools.mjs';
 
-export function createVoiceServer({config,endpoint=ENDPOINT,port=8766,memoryRoot=fileURLToPath(new URL('../../runtime/data/',import.meta.url)),withWake=true,extract,speak=streamMemorySpeech,memorySandbox=false}={}){
+export function createVoiceServer({config,endpoint=ENDPOINT,port=8766,memoryRoot=fileURLToPath(new URL('../../runtime/data/',import.meta.url)),withWake=true,extract,speak=streamMemorySpeech,memorySandbox=false,skillsRoot}={}){
+const modes=new ModeController(loadSkills(skillsRoot));
 let store,worker;
 function initializeMemory(){
 store=new MemoryStore(memoryRoot);
@@ -67,6 +70,7 @@ wss.on('connection',client=> {
   let creationTimer, closeTimer, cancelTimer;
   let paused=false, lastHeartbeat=Date.now();
   let history=null,memoryTools=null,historyFinished=false;
+  let modeTools=null,modeScope=null,modeTimer=null;
   let memoryOwned=false,memorySpeechAbort=null,memoryFeedbackTimer=null,turnRevision=0;
   let mainTurnDone=false,contextFeedback=null;
   const guard=new ResponseGuard();
@@ -78,14 +82,14 @@ wss.on('connection',client=> {
     catch { send({type:'local.error',message:'日志保存失败，停止本次验证'}); stop(); }
   };
   function finishHistory(reason){
-    if(historyFinished)return;historyFinished=true;memoryTools?.close();
+    if(historyFinished)return;historyFinished=true;memoryTools?.close();modeTools?.close();
     try{history?.end(reason);worker.kick();}
     catch{send({type:'local.error',message:'文字历史或待提炼任务保存失败；请保留本地文件排查'});}
   }
   function stop(reason='client_end') {
     if(closing) return;
     closing=true; ready=false;
-    memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);
+    memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);clearTimeout(modeTimer);
     finishHistory(reason);
     clearTimeout(creationTimer); clearTimeout(cancelTimer); clearInterval(watchdog);
     cloud({type:'session.close'});
@@ -114,8 +118,9 @@ wss.on('connection',client=> {
   }
   function localMemoryFeedback(result){
     if(closing)return;
-    memoryOwned=true;clearTimeout(memoryFeedbackTimer);memorySpeechAbort?.abort();
-    const revision=turnRevision,id=`memory-${randomUUID()}`,text=memorySpeech(result);
+    memoryOwned=true;clearTimeout(memoryFeedbackTimer);clearTimeout(modeTimer);memorySpeechAbort?.abort();
+    const source=result.status==='mode_control'?'local_mode':'local_memory';
+    const revision=turnRevision,id=`${source==='local_mode'?'mode':'memory'}-${randomUUID()}`,text=memorySpeech(result);
     const controller=new AbortController();memorySpeechAbort=controller;
     contextFeedback={text,complete:false};
     // Clear any speculative conversation audio before sending authoritative text.
@@ -123,13 +128,13 @@ wss.on('connection',client=> {
     try{
       if(result.status==='confirmation_required')store.bindConfirmation(result.memoryId,result.offer.token,id);
       const event={type:'response.output_text.done',response_id:id,text};
-      history?.output(event,{source:'local_memory'});send(event);log({...event,source:'local_memory'});
+      history?.output(event,{source});send(event);log({...event,source});
     }catch{fail('确认状态或文字历史保存失败，请保留文件排查');return;}
     speak({config,text,responseId:id,signal:controller.signal,onEvent:event=>{
       if(closing||revision!==turnRevision||controller.signal.aborted)return;
       try{
-        if(event.type==='response.output_audio.started')history?.output(event,{source:'local_memory'});
-        send(event);if(event.type!=='response.output_audio.delta')log({...event,source:'local_memory'});
+        if(event.type==='response.output_audio.started')history?.output(event,{source});
+        send(event);if(event.type!=='response.output_audio.delta')log({...event,source});
       }catch{fail('记忆播报状态保存失败');}
     },onUsage:usage=>log({type:'local.memory_speech_usage',usage})}).then(()=>{
       if(closing||revision!==turnRevision||controller.signal.aborted)return;
@@ -170,6 +175,9 @@ wss.on('connection',client=> {
       try{
         if(e.mode!=='diagnostic'){
           history=new HistoryRecorder(store,e.mode==='manual'?'manual':'wake');
+          modeScope=modes.begin();modeTools=new ModeTools(modeScope);
+          history.session.initialMode=modeScope.snapshot().id;history.session.modeEvents=[];history.persist();
+          send({type:'local.mode_state',...modeScope.snapshot(),instructions:undefined});
           memoryTools=new MemoryTools(store,history,{onResult:result=>log({type:'local.memory_tool',...result}),onFeedback:localMemoryFeedback});
           log({type:'local.history',sessionId:history.session.id});
         }
@@ -177,8 +185,8 @@ wss.on('connection',client=> {
       upstream=new WebSocket(endpoint,{headers:{'X-Api-Key':config.key},handshakeTimeout:15000,maxPayload:2*1024*1024});
       creationTimer=setTimeout(()=>fail('创建云端会话超时'),20000);
       upstream.on('open',()=>{
-        const request=history?memorySession(config.voice):sessionCreate(config.voice);
-        log({type:'local.session_config',model:request.session.model,promptVersion:history?MEMORY_PROMPT_ID:ACTIVE_PROMPT_ID,
+        const request=history?modeSessionRequest(memorySession(config.voice),modeScope):sessionCreate(config.voice);
+        log({type:'local.session_config',model:request.session.model,promptVersion:history?MODE_PROMPT_ID:ACTIVE_PROMPT_ID,memoryPromptVersion:history?MEMORY_PROMPT_ID:undefined,
           promptSha256:createHash('sha256').update(request.session.instructions).digest('hex')});
         cloud(request);
       });
@@ -205,21 +213,23 @@ wss.on('connection',client=> {
         if(event.type==='session.closed') {
           finishHistory('provider_closed');
           closing=true; ready=false; clearTimeout(creationTimer);
+          clearTimeout(modeTimer);
           clearTimeout(closeTimer); clearInterval(watchdog);clearTimeout(cancelTimer);
           send({type:'local.closed'});log({type:event.type,audioFrames});
           upstream.close();client.close();return;
         }
         if(closing) return;
         if(event.type==='conversation.item.input_audio_transcription.started') {
-          turnRevision++;memoryOwned=false;memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);mainTurnDone=false;contextFeedback=null;
+          turnRevision++;memoryOwned=false;memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);clearTimeout(modeTimer);mainTurnDone=false;contextFeedback=null;
           paused=false;
           memoryTools?.userStarted();history?.interrupt();
+          modeTools?.userStarted();
           send({type:'local.user_started'});
           if(guard.active) cancel();
         }
         if(event.type==='conversation.item.input_audio_transcription.completed') {
           const text=event.transcript||event.text||'';
-          if(text.trim())history?.user(text);memoryTools?.userCompleted();
+          if(text.trim())history?.user(text);memoryTools?.userCompleted();modeTools?.userCompleted();
           const command=sessionCommand(text);
           if(command==='end'){send({type:'local.end'});log({type:'local.end',reason:'command'});stop('voice_command');return;}
           if(command==='wait'){
@@ -227,21 +237,35 @@ wss.on('connection',client=> {
             send({type:'local.waiting'});log({type:'local.waiting'});
           }
           if(!command&&history){
-            const reply=memoryTools.reply();
-            if(reply)localMemoryFeedback(reply);
+            const modeResult=modeScope.input(text);
+            if(modeResult.change){
+              const event={type:'local.mode_changed',...modeResult.change,at:new Date().toISOString(),userEntryId:history.currentUser};
+              history.session.modeEvents.push(event);history.persist();log(event);
+            }
+            send({type:'local.mode_state',...modeScope.snapshot(),instructions:undefined});
+            const revision=turnRevision;
+            modeTimer=setTimeout(()=>{if(!closing&&revision===turnRevision&&!modeTools.read){memoryTools.wroteThisTurn=true;log({type:'local.mode_context_missing'});localMemoryFeedback({status:'mode_control',message:'这轮没有取得当前对话规则，请再说一次。'});}},8000);
+            const reply=modeResult.handled?null:memoryTools.reply();
+            if(modeResult.handled){memoryTools.currentOffer=null;memoryTools.wroteThisTurn=true;localMemoryFeedback({status:'mode_control',message:modeResult.reply});}
+            else if(reply)localMemoryFeedback(reply);
             else if(explicitRemember(text)){
               memoryOwned=true;
               const revision=turnRevision;
               memoryFeedbackTimer=setTimeout(()=>{if(!closing&&revision===turnRevision){memoryTools.wroteThisTurn=true;localMemoryFeedback({status:'not_called'});}},8000);
-            }
+            }else{const recalled=memoryTools.recall(text);if(recalled)localMemoryFeedback(recalled);}
           }
         }
         if(event.type==='response.canceled') clearTimeout(cancelTimer);
         if(!guard.accept(event)) return;
         if(memoryOwned&&event.type.startsWith('response.output_'))return;
+        if(modeTools&&!modeTools.read&&event.type.startsWith('response.output_'))return;
         if(paused&&event.type.startsWith('response.output_'))return;
         if(event.type==='response.function_call_arguments.done'){
-          if(!paused)for(const item of (event.items||[]).slice(0,4)){const result=memoryTools?.handle(item);if(result)cloud(result);}
+          if(!paused)for(const item of (event.items||[]).slice(0,4)){
+            if(item.name==='read_mode_context'){
+              const result=modeTools?.handle(item);if(result){clearTimeout(modeTimer);log({type:'local.mode_context_read',mode:modeScope.snapshot().id,revision:modeScope.snapshot().revision});cloud(result);}
+            }else{const result=memoryTools?.handle(item);if(result)cloud(result);}
+          }
           return;
         }
         if(event.type==='response.output_text.delta'||event.type==='response.output_text.done'||event.type==='response.output_audio.started')history?.output(event);
@@ -269,7 +293,7 @@ wss.on('connection',client=> {
       } else if(e.type==='unmute') cloud({type:'input_audio_unmute.commit'});
       else if(e.type==='mute') cloud({type:'input_audio_mute.commit'});
       else if(e.type==='interrupt'){try{
-        memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);contextFeedback=null;
+        memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);clearTimeout(modeTimer);contextFeedback=null;
         if(memoryTools)memoryTools.wroteThisTurn=true;
         history?.interrupt();cancel();
       }catch{fail('历史保存失败');}}
@@ -283,7 +307,7 @@ wss.on('connection',client=> {
   client.on('error',()=>stop('client_error'));
 });
 server.on('error',e=>{console.error(e.code||'Server error');process.exitCode=1;});
-return {server,get store(){return store;},get worker(){return worker;},start(){return new Promise((resolve,reject)=>{
+return {server,modes,get store(){return store;},get worker(){return worker;},start(){return new Promise((resolve,reject)=>{
   // Own the listening port before recovering files; a second startup must not
   // mark the first process's still-active conversations as interrupted.
   const failed=e=>reject(e);server.once('error',failed);
@@ -293,7 +317,7 @@ return {server,get store(){return store;},get worker(){return worker;},start(){r
 }};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
-  const app=createVoiceServer({config:loadConfig()});
+  const app=createVoiceServer({config:loadConfig(),skillsRoot:process.env.JARVIS_SKILLS_DIR});
   app.start().then(origin=>console.log(`Jarvis voice: ${origin} (key stays on server)`)).catch(()=>{console.error('语音服务未启动：检查端口占用或本地数据文件；原文件不会自动删除。');process.exitCode=1;});
   const shutdown=()=>{app.close();setTimeout(()=>process.exit(),3000).unref();};
   process.on('SIGINT',shutdown);process.on('SIGTERM',shutdown);
