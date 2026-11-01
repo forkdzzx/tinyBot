@@ -8,7 +8,9 @@
 - [V2 迭代优化备忘录](prd/v2-iteration-memo.md)
 - [日期、任务与实测状态](docs/project-status.md)
 - [首轮技术验证方案](docs/p1-feasibility.md)
-- [Stack-chan 成品与自建路线评估](prd/stackchan-review.md)
+- [Stack-chan 成品与自建路线初评](prd/stackchan-review.md)
+- [最新硬件路线、完整预算与证据](docs/hardware-route-review-2026-11-01.md)
+- [硬件台架与电源验证计划](docs/hardware-bench-plan.md)
 - [火山引擎开通与接入准备](docs/volcengine-setup.md)
 - [固定语音评估与架构比较](docs/voice-evaluation-2026-10-24.md)
 - [方舟文本对照实测结果（2026-10-25）](docs/voice-comparison-2026-10-25.md)
@@ -27,6 +29,9 @@
 - [最新更正、记忆范围与打断后回复修复](docs/memory-correction-2026-10-30.md)
 - [四模式 Skill 与切换实现](docs/modes-implementation-2026-10-30.md)
 - [四模式短体验](docs/modes-short-test.md)
+- [英语收尾与学习记录实现](docs/learning-implementation-2026-11-01.md)
+- [英语短体验（本轮已结束）](docs/learning-short-test.md)
+- [英语真人反馈与英文入口修复](docs/learning-feedback-2026-11-01.md)
 - [11-01 识别停滞反馈与恢复](docs/input-stall-feedback-2026-11-01.md)
 - [11-01 确认回复与后续修复](docs/confirmation-followup-feedback-2026-11-01.md)
 - [本地唤醒漏检诊断（已完成）](docs/local-wake-diagnosis.md)
@@ -80,7 +85,7 @@ npm run voice
 
 已接入正式文字历史和最小跨会话记忆，后台提炼复用 `runtime/ark.env`（本机已配置）。历史与记忆存于 `runtime/data/`，不保存录音；维护方式见[实现记录](docs/memory-implementation-2026-10-27.md)。[10-29 真人短测](docs/memory-feedback-2026-10-29.md)确认跨会话读取有效、自然度改善；[10-30 反馈](docs/spoken-intent-feedback-2026-10-30.md)后的口语前缀已修复，用户反馈没有明显长等待，正式量化延迟仍待验收。
 
-最新[记忆确认流程](docs/memory-confirmation-2026-10-30.md)支持并存爱好、受控保存播报和确认替换／拒绝／延期；89 项单元检查及定向真实合成通过，最新[真人反馈](docs/memory-confirmation-feedback-2026-10-30.md)已齐：等待与表达可以接受，乌龙茶是主动打断。[后续修复](docs/memory-correction-2026-10-30.md)已补更正、有限属性键／限定范围及否定追问，101 项检查与服务回放通过；云端分句／错字和最终真人验收仍待观察，本轮接入四模式。运行 `npm run voice:memory-test` 可在 **8767** 开启独立记忆测试页，虚构偏好不会写入个人数据；[本轮短测](docs/memory-confirmation-short-test.md)已结束，暂不重复。四模式及切换／回滚现已接入，113 项检查通过；[真实合成与已知缺口](docs/modes-implementation-2026-10-30.md)有记录。11-01 的四模式测试尚未完成，保留[原四模式步骤](docs/modes-short-test.md)待后续集中继续，暂不要求立即重测。英语学习总结、搜索、主动搭话与实体硬件仍未接入。
+最新[记忆确认流程](docs/memory-confirmation-2026-10-30.md)支持并存爱好、受控保存播报和确认替换／拒绝／延期；89 项单元检查及定向真实合成通过，最新[真人反馈](docs/memory-confirmation-feedback-2026-10-30.md)已齐：等待与表达可以接受，乌龙茶是主动打断。[后续修复](docs/memory-correction-2026-10-30.md)已补更正、有限属性键／限定范围及否定追问，101 项检查与服务回放通过；云端分句／错字和最终真人验收仍待观察，本轮接入四模式。运行 `npm run voice:memory-test` 可在 **8767** 开启独立记忆测试页，虚构偏好不会写入个人数据；[本轮短测](docs/memory-confirmation-short-test.md)已结束，暂不重复。四模式及切换／回滚现已接入，113 项检查通过；[真实合成与已知缺口](docs/modes-implementation-2026-10-30.md)有记录。11-01 的四模式测试尚未完成，保留[原四模式步骤](docs/modes-short-test.md)待后续集中继续，暂不要求立即重测。英语学习总结现已接入，见下方最新记录；搜索、主动搭话与实体硬件仍未接入。
 
 此前[11-01 21:52 卡顿记录](docs/input-stall-feedback-2026-11-01.md)显示最后一句只有 partial、没有识别完成。已补 6 秒提示、用户可选“我说完了”单次提交和 8 秒无 final 明确关闭，并修复有限红茶等义去重与完整肯定短句；127 项检查、服务及模拟页面回归通过。真实合成证明显式提交协议可用，原卡顿原因及修复后真人效果仍待确认，不要求重跑整套测试。
 
@@ -92,3 +97,9 @@ npm run voice:probe -- --loopback
 ```
 
 上述 probe 会调用已开通的云服务并产生用量；loopback 仅将合成问题在内存中回送，不保存音频，不使用麦克风。
+
+最新[英语收尾与学习记录](docs/learning-implementation-2026-11-01.md)：说“今天练到这里”可总结并回日常，直接退出只后台整理；保存来源可核对的词汇和表达建议，后续会话可读取。179 项单元检查、本地服务与模拟页面回归通过；真实合成回环及三条文字反例通过定向检查，首次过度纠错失败保留。完整英语体验仍待验证，准备[3–5 分钟短体验](docs/learning-short-test.md)，不用重跑记忆测试。
+
+最新[英语真人反馈](docs/learning-feedback-2026-11-01.md)：用户感觉基本合适，确认 weekend、wine 和结束话转写错误；英文练习请求未切换本地模式，现补有限明确英文入口。187 项检查及真实转写的本地流程回放通过，识别错误本身未修复。本轮后半段后台归档完成，口头总结与跨会话读取仍待验证；暂不要求重复测试。
+
+硬件准备已更新：[最新比较](docs/hardware-route-review-2026-11-01.md)建议优先B-L验证，预算分配4565元；A2约3390–3790元，但现有社区USB桥半双工且新屏适配未验证；B-J约6739元超本期预算。[电源与台架计划](docs/hardware-bench-plan.md)列明待实测门槛。路线尚未选择、器件未购买，所有占位须采购前核到手价。

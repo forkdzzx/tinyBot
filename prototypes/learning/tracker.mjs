@@ -8,13 +8,27 @@ function segments(session,active,end,reason){
   const selected=session.entries.slice(active.startIndex,end);
   const userIds=new Set(selected.filter(e=>e.role==='user'&&!e.memoryExcluded&&!modeCommand(e.text)&&!sessionCommand(e.text)&&!practiceEnd(e.text)).map(e=>e.id));
   const entries=selected.filter(e=>userIds.has(e.id)||(e.role==='assistant'&&userIds.has(e.userEntryId)&&e.source==='provider_output'&&e.generation==='complete'&&e.playback==='completed'));
-  const chunks=[];let chunk=[],size=0;
+  const chunks=[],anchors=new Map();let chunk=[],size=0,chunkIds=new Set(),chunkUsers=new Set();
+  const flush=()=>{if(chunk.length)chunks.push(chunk);chunk=[];size=0;chunkIds=new Set();chunkUsers=new Set();};
+  const append=(piece,userId)=>{
+    if(chunkIds.has(piece.id))return;
+    chunk.push(piece);size+=piece.text.length;chunkIds.add(piece.id);if(userId)chunkUsers.add(userId);
+  };
   for(const entry of entries)for(let offset=0;offset<entry.text.length;offset+=2000){
     const text=entry.text.slice(offset,offset+2000);if(!text.trim())continue;
-    if(chunk.length>=60||size+text.length>16000){chunks.push(chunk);chunk=[];size=0;}
-    chunk.push({id:offset?`${entry.id}:${offset}`:entry.id,role:entry.role,text});size+=text.length;
+    const piece={id:offset?`${entry.id}:${offset}`:entry.id,role:entry.role,text};
+    if(entry.role==='user'&&!anchors.has(entry.id))anchors.set(entry.id,piece);
+    const anchor=entry.role==='assistant'?anchors.get(entry.userEntryId):null;
+    // Assistant-only overflow still belongs to a real learner turn. Repeat its
+    // exact source anchor so the archive can retain it without inventing speech;
+    // progress deduplicates the unchanged original user id across these chunks.
+    if(entry.role==='assistant'&&!anchor)continue;
+    let needsAnchor=anchor&&!chunkUsers.has(entry.userEntryId);
+    if(chunk.length+1+(needsAnchor?1:0)>60||size+text.length+(needsAnchor?anchor.text.length:0)>16000){flush();needsAnchor=Boolean(anchor);}
+    if(needsAnchor)append(anchor,entry.userEntryId);
+    append(piece,entry.role==='user'?entry.id:null);
   }
-  if(chunk.length)chunks.push(chunk);
+  flush();
   return chunks.map((entries,i)=>({id:`${active.id}-${i}`,sessionId:session.id,startedAt:active.startedAt,endedAt:new Date().toISOString(),reason,entries}));
 }
 export class PracticeTracker{

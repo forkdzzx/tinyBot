@@ -30,12 +30,11 @@ store=new MemoryStore(memoryRoot);
 worker=new MemoryWorker(store,{...(extract?{extract}:{}),onStatus:e=>{
   try{appendFileSync(new URL('../../runtime/voice/memory-worker.jsonl',import.meta.url),JSON.stringify({at:new Date().toISOString(),...e})+'\n',{mode:0o600});}catch{}
 }});
-worker.start();
 learningArchive=new LearningArchive(memoryRoot);recoverPractice(store,learningArchive);
 learningWorker=new LearningWorker(learningArchive,{...(extractPractice?{extract:extractPractice}:{}),onStatus:e=>{
   try{appendFileSync(new URL('../../runtime/voice/learning-worker.jsonl',import.meta.url),JSON.stringify({at:new Date().toISOString(),...e})+'\n',{mode:0o600});}catch{}
   for(const client of wss.clients)if(client.readyState===WebSocket.OPEN)client.send(JSON.stringify(learningState()));
-}});learningWorker.start();
+}});worker.start();learningWorker.start();
 }
 function learningState(){return {type:'local.learning_state',...learningContext(learningArchive),pendingCount:learningArchive.state.segments.filter(s=>['queued','running'].includes(s.status)).length,failedCount:learningArchive.state.segments.filter(s=>s.status==='failed').length};}
 const host = `127.0.0.1:${port}`;
@@ -358,6 +357,7 @@ wss.on('connection',client=> {
       else if(e.type==='mute') cloud({type:'input_audio_mute.commit'});
       else if(e.type==='finish_input')inputRecovery.finish(e.turn);
       else if(e.type==='interrupt'){try{
+        turnRevision++; // Also invalidate a summary still waiting for extraction.
         cancelModeNotice();
         memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);contextFeedback=null;
         if(memoryTools)memoryTools.wroteThisTurn=true;
@@ -377,7 +377,7 @@ return {server,modes,get learningArchive(){return learningArchive;},get learning
   // Own the listening port before recovering files; a second startup must not
   // mark the first process's still-active conversations as interrupted.
   const failed=e=>reject(e);server.once('error',failed);
-  server.listen(port,'127.0.0.1',()=>{server.off('error',failed);try{initializeMemory();resolve(origin);}catch(error){server.close();reject(error);}});
+  server.listen(port,'127.0.0.1',()=>{server.off('error',failed);try{initializeMemory();resolve(origin);}catch(error){worker?.stop();learningWorker?.stop();server.close();reject(error);}});
 });},close(){
   worker?.stop();learningWorker?.stop();for(const ws of [wss,wakeWss])for(const c of ws.clients)c.close();server.close();
 }};

@@ -1,0 +1,47 @@
+### Result
+{"pendingShown":true,"completedShown":true,"exposureNotMastery":true,"failureShown":true,"restart":true,"spokenEnd":true,"resourcesReleased":true,"pageErrors":[]}
+### Ran Playwright code
+```js
+await (async (page) => {
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.addInitScript(()=>{
+    window.__sockets=[];window.__tracks=[];
+    navigator.mediaDevices.getUserMedia=async()=>{
+      const ctx=new AudioContext({sampleRate:16000}),dest=ctx.createMediaStreamDestination();
+      const osc=ctx.createOscillator(),gain=ctx.createGain();gain.gain.value=0;osc.connect(gain).connect(dest);osc.start();
+      window.__tracks.push(...dest.stream.getTracks());return dest.stream;
+    };
+    class Socket {
+      static OPEN=1;
+      constructor(url){this.url=url;this.sent=[];this.bufferedAmount=0;window.__sockets.push(this);queueMicrotask(()=>{this.readyState=1;this.onopen?.();});}
+      emit(e){this.onmessage?.({data:JSON.stringify(e)});}
+      send(raw){if(typeof raw!=='string')return;const e=JSON.parse(raw);this.sent.push(e);if(e.type==='start')queueMicrotask(()=>this.emit({type:'local.ready'}));if(e.type==='interrupt')queueMicrotask(()=>this.emit({type:'response.canceled'}));if(e.type==='stop')queueMicrotask(()=>this.emit({type:'local.closed'}));}
+      close(){this.readyState=3;queueMicrotask(()=>this.onclose?.());}
+    }
+    window.WebSocket=Socket;
+  });
+  await page.goto('http://127.0.0.1:8767/');
+  if(!await page.getByRole('heading',{name:'Jarvis · 隔离记忆测试'}).isVisible())throw new Error('Missing sandbox heading');
+  if(!await page.getByRole('note').isVisible())throw new Error('Missing data isolation notice');
+  if(await page.evaluate(()=>window.__sockets.length||window.__tracks.length))throw new Error('Automatic capture');
+  const start=page.getByRole('button',{name:'开始聊天',exact:true});await start.click();
+  await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('可以直接讲话'));
+  await page.evaluate(()=>window.__sockets.at(-1).emit({type:'local.learning_state',segmentCount:0,userTurnCount:0,pendingCount:1,failedCount:0,lastVocabulary:[]}));
+  if(!(await page.locator('#learning').textContent()).includes('还有记录在整理'))throw new Error('Missing pending state');
+  await page.evaluate(()=>window.__sockets.at(-1).emit({type:'local.learning_state',segmentCount:1,userTurnCount:2,pendingCount:0,failedCount:0,lastVocabulary:[{word:'breakfast'}]}));
+  const completed=await page.locator('#learning').textContent();
+  for(const text of ['已整理 1 段','练习 2 轮','breakfast','不代表掌握程度'])if(!completed.includes(text))throw new Error('Missing '+text);
+  if(completed.includes('还有记录在整理'))throw new Error('Stale pending state');
+  await page.evaluate(()=>window.__sockets.at(-1).emit({type:'local.learning_state',segmentCount:1,userTurnCount:2,pendingCount:0,failedCount:1,lastVocabulary:[]}));
+  if(!(await page.locator('#learning').textContent()).includes('整理失败，文字历史已保留'))throw new Error('Missing failure state');
+  await page.getByRole('button',{name:'结束聊天',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('麦克风关闭'));
+  await start.click();await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('可以直接讲话'));
+  await page.evaluate(()=>{const s=window.__sockets.at(-1);s.emit({type:'local.user_started'});s.emit({type:'conversation.item.input_audio_transcription.completed',text:'我有点不想聊天了，先结束吧'});});
+  await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('麦克风关闭'));
+  if(await page.evaluate(()=>window.__tracks.some(t=>t.readyState!=='ended')||window.__sockets.some(s=>s.readyState!==3)))throw new Error('Resources leaked');
+  if(errors.length)throw new Error(errors.join('; '));
+  return {pendingShown:true,completedShown:true,exposureNotMastery:true,failureShown:true,restart:true,spokenEnd:true,resourcesReleased:true,pageErrors:errors};
+}
+)(page);
+```

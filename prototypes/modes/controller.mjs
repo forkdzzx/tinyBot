@@ -17,9 +17,18 @@ export function loadSkills(root=DEFAULT_SKILLS){
   return Object.freeze(skills);
 }
 const names={'日常':'daily','聊天':'daily','工作':'work','陪伴':'companion','游戏':'companion','看球':'companion','英语':'english','英语练习':'english'};
+function englishPracticeRequest(text){
+  const s=text.toLowerCase().replace(/’/gu,"'").replace(/[.!?。！？]+$/u,'').replace(/\s+/gu,' ').trim();
+  // Recognize an explicit practice request, not merely a language preference.
+  // Whole-utterance matches leave quoted, negated and compound requests intact.
+  return /^(?:please,? )?(?:help me |let's |let us |can we |could we |can you (?:help me )?|could you (?:help me )?|i (?:just )?(?:want|would like) to |i'd like to )?(?:practice|practise) (?:spoken |oral )?english(?: with (?:you|me))?(?:,? please)?$/u.test(s)
+    || /^(?:i (?:just )?(?:want|would like)|i'd like)(?: (?:some|the))? (?:(?:spoken|oral) english practice|english(?: speaking| oral| conversation)? practice)(?:,? (?:oral|speaking) practice)?(?:,? please)?$/u.test(s)
+    || /^(?:let's|let us|can we|could we) (?:do|start|have) (?:some )?english(?: speaking| oral)? practice(?:,? please)?$/u.test(s);
+}
 export function modeCommand(text){
   if(typeof text!=='string'||/[“”"「」『』]/u.test(text))return null;
   const s=stripSpokenLeadIn(text).replace(/[。.!！]+$/u,'').trim();
+  if(englishPracticeRequest(s))return {type:'manual',mode:'english',rest:''};
   if(/^(?:请)?(?:不要切换|别切换|不要自动切换|别自动切换)(?:模式)?(?:了)?$/u.test(s))return {type:'rollback',rest:''};
   if(/^(?:不练英语了?|停止英语练习|退出英语(?:练习)?)(?:[，,\s]*(?:只是聊天|随便聊聊|正常聊天|回到日常模式))?$/u.test(s)||practiceEnd(s))return {type:'manual',mode:'daily',rest:''};
   const m=s.match(/^(?:请|帮我)?(?:进入|切换到|切到|换成|回到)(日常|聊天|工作|陪伴|游戏|看球|英语练习|英语)模式(?:[，,:：]\s*(.+))?$/u);
