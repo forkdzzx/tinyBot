@@ -1,6 +1,7 @@
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {join} from 'node:path';
+import {practiceEnd} from '../learning/intents.mjs';
 import {stripSpokenLeadIn} from '../voice/intent-text.mjs';
 export const MODE_IDS=Object.freeze(['daily','work','companion','english']);
 export const DEFAULT_SKILLS=fileURLToPath(new URL('./skills/',import.meta.url));
@@ -20,7 +21,7 @@ export function modeCommand(text){
   if(typeof text!=='string'||/[“”"「」『』]/u.test(text))return null;
   const s=stripSpokenLeadIn(text).replace(/[。.!！]+$/u,'').trim();
   if(/^(?:请)?(?:不要切换|别切换|不要自动切换|别自动切换)(?:模式)?(?:了)?$/u.test(s))return {type:'rollback',rest:''};
-  if(/^(?:不练英语了?|停止英语练习|退出英语(?:练习)?)(?:[，,\s]*(?:只是聊天|随便聊聊|正常聊天|回到日常模式))?$/u.test(s)||s==='今天练到这里')return {type:'manual',mode:'daily',rest:''};
+  if(/^(?:不练英语了?|停止英语练习|退出英语(?:练习)?)(?:[，,\s]*(?:只是聊天|随便聊聊|正常聊天|回到日常模式))?$/u.test(s)||practiceEnd(s))return {type:'manual',mode:'daily',rest:''};
   const m=s.match(/^(?:请|帮我)?(?:进入|切换到|切到|换成|回到)(日常|聊天|工作|陪伴|游戏|看球|英语练习|英语)模式(?:[，,:：]\s*(.+))?$/u);
   if(m)return {type:'manual',mode:names[m[1]],rest:m[2]||''};
   const practice=s.match(/^(?:请|我想|我想要)?(?:陪我|我们来|开始)?(?:练英语|练习英语|练习英语口语|练习口语|练口语)(?:吧)?(?:[，,:：]\s*(.+))?$/u);

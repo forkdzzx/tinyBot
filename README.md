@@ -27,6 +27,8 @@
 - [最新更正、记忆范围与打断后回复修复](docs/memory-correction-2026-10-30.md)
 - [四模式 Skill 与切换实现](docs/modes-implementation-2026-10-30.md)
 - [四模式短体验](docs/modes-short-test.md)
+- [11-01 识别停滞反馈与恢复](docs/input-stall-feedback-2026-11-01.md)
+- [11-01 确认回复与后续修复](docs/confirmation-followup-feedback-2026-11-01.md)
 - [本地唤醒漏检诊断（已完成）](docs/local-wake-diagnosis.md)
 - [本地唤醒漏检分析](docs/wake-review-2026-10-25.md)
 - [本地唤醒与会话流程短测（暂停）](docs/local-wake-test.md)
@@ -78,7 +80,11 @@ npm run voice
 
 已接入正式文字历史和最小跨会话记忆，后台提炼复用 `runtime/ark.env`（本机已配置）。历史与记忆存于 `runtime/data/`，不保存录音；维护方式见[实现记录](docs/memory-implementation-2026-10-27.md)。[10-29 真人短测](docs/memory-feedback-2026-10-29.md)确认跨会话读取有效、自然度改善；[10-30 反馈](docs/spoken-intent-feedback-2026-10-30.md)后的口语前缀已修复，用户反馈没有明显长等待，正式量化延迟仍待验收。
 
-最新[记忆确认流程](docs/memory-confirmation-2026-10-30.md)支持并存爱好、受控保存播报和确认替换／拒绝／延期；89 项单元检查及定向真实合成通过，最新[真人反馈](docs/memory-confirmation-feedback-2026-10-30.md)已齐：等待与表达可以接受，乌龙茶是主动打断。[后续修复](docs/memory-correction-2026-10-30.md)已补更正、有限属性键／限定范围及否定追问，101 项检查与服务回放通过；云端分句／错字和最终真人验收仍待观察，本轮接入四模式。运行 `npm run voice:memory-test` 可在 **8767** 开启独立记忆测试页，虚构偏好不会写入个人数据；[本轮短测](docs/memory-confirmation-short-test.md)已结束，暂不重复。四模式及切换／回滚现已接入，113 项检查通过；[真实合成与已知缺口](docs/modes-implementation-2026-10-30.md)有记录。可进行[四模式短体验](docs/modes-short-test.md)。英语学习总结、搜索、主动搭话与实体硬件仍未接入。
+最新[记忆确认流程](docs/memory-confirmation-2026-10-30.md)支持并存爱好、受控保存播报和确认替换／拒绝／延期；89 项单元检查及定向真实合成通过，最新[真人反馈](docs/memory-confirmation-feedback-2026-10-30.md)已齐：等待与表达可以接受，乌龙茶是主动打断。[后续修复](docs/memory-correction-2026-10-30.md)已补更正、有限属性键／限定范围及否定追问，101 项检查与服务回放通过；云端分句／错字和最终真人验收仍待观察，本轮接入四模式。运行 `npm run voice:memory-test` 可在 **8767** 开启独立记忆测试页，虚构偏好不会写入个人数据；[本轮短测](docs/memory-confirmation-short-test.md)已结束，暂不重复。四模式及切换／回滚现已接入，113 项检查通过；[真实合成与已知缺口](docs/modes-implementation-2026-10-30.md)有记录。11-01 的四模式测试尚未完成，保留[原四模式步骤](docs/modes-short-test.md)待后续集中继续，暂不要求立即重测。英语学习总结、搜索、主动搭话与实体硬件仍未接入。
+
+此前[11-01 21:52 卡顿记录](docs/input-stall-feedback-2026-11-01.md)显示最后一句只有 partial、没有识别完成。已补 6 秒提示、用户可选“我说完了”单次提交和 8 秒无 final 明确关闭，并修复有限红茶等义去重与完整肯定短句；127 项检查、服务及模拟页面回归通过。真实合成证明显式提交协议可用，原卡顿原因及修复后真人效果仍待确认，不要求重跑整套测试。
+
+最新[22:19 确认反馈](docs/confirmation-followup-feedback-2026-11-01.md)：用户没有明显长等待、未点恢复按钮，但最终转写把“吧”变为“吗”，绿茶确认替换失败。已补一次澄清与明确后续回复衔接，135 项检查和本地服务回放通过；ASR 错字未修复，新澄清仍待真人验证。旧客户端标记不能推断后端版本；原数据保留，暂不要求立即重测。
 
 ```sh
 npm run voice:probe -- --greeting

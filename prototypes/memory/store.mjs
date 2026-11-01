@@ -1,7 +1,7 @@
 import {mkdirSync,readFileSync,readdirSync,openSync,writeFileSync,fsyncSync,closeSync,renameSync,unlinkSync,existsSync} from 'node:fs';
 import {join,dirname} from 'node:path';
 import {randomUUID,createHash} from 'node:crypto';
-import {explicitRemember,sessionOnlyMemory,additivePreference,confirmationDecision,memoryQuoteCore,memoryIdentity,memoryConflicts,favoriteDrinkQuestion} from './policy.mjs';
+import {explicitRemember,sessionOnlyMemory,additivePreference,confirmationDecision,memoryQuoteCore,memoryIdentity,memoryConflicts,favoriteDrinkQuestion,drinkFactEquivalence,ambiguousConfirmation} from './policy.mjs';
 export {explicitRemember} from './policy.mjs';
 
 const now=()=>new Date().toISOString();
@@ -73,10 +73,20 @@ export class MemoryStore {
     return {...memoryIdentity(candidate.key,candidate.quote,source.text),layer:candidate.layer,kind:candidate.kind,text:candidate.quote,sessionOnly:sessionOnlyMemory(candidate.quote,source.text),
       source:{sessionId:session.id,entryId:source.id,quote:candidate.quote,at:source.at}};
   }
+  drinkEquivalence(memory){
+    if(memory.kind!=='fact')return null;
+    const source=memory.source||memory.sources?.[0];if(!source)return null;
+    try{
+      const entry=this.readSession(source.sessionId).entries.find(e=>e.id===source.entryId&&e.role==='user');
+      return entry&&!entry.memoryExcluded?drinkFactEquivalence(memory,entry.text):null;
+    }catch{return null;} // Missing provenance cannot justify semantic merging.
+  }
   addTo(state,candidate,origin){
     const retired=state.memories.find(m=>memoryIdentity(m.key,m.text).key===candidate.key&&['rejected','superseded','excluded'].includes(m.status)&&m.sources.some(s=>s.sessionId===candidate.source.sessionId&&s.entryId===candidate.source.entryId));
     if(retired)return {status:retired.status==='excluded'?'excluded':'inactive',memoryId:retired.id};
-    const matches=state.memories.filter(m=>clean(memoryQuoteCore(m.text))===clean(memoryQuoteCore(candidate.text)));
+    const drinkValue=this.drinkEquivalence(candidate);
+    const matches=state.memories.filter(m=>clean(memoryQuoteCore(m.text))===clean(memoryQuoteCore(candidate.text))||
+      (drinkValue&&m.layer===candidate.layer&&drinkValue===this.drinkEquivalence(m)));
     const identical=matches.find(m=>['confirmed','pending_confirmation','excluded'].includes(m.status))||matches.find(m=>m.sources.some(s=>s.sessionId===candidate.source.sessionId&&s.entryId===candidate.source.entryId));
     if(identical){
       if(identical.status==='excluded')return {status:'excluded',memoryId:identical.id};
@@ -110,6 +120,19 @@ export class MemoryStore {
   }
   bindConfirmation(id,token,responseId){
     this.commit(s=>{const m=s.memories.find(m=>m.id===id);if(!m?.lastOffer||m.lastOffer.token!==token)throw new Error('Stale confirmation');m.lastOffer.responseId=responseId;});
+  }
+  clarifyConfirmation(id,token,sessionId,userEntryId){
+    const session=this.readSession(sessionId),users=session.entries.filter(e=>e.role==='user'),request=users.at(-1);
+    const m=this.state.memories.find(m=>m.id===id),previous=m?.lastOffer;
+    const spoken=session.entries.find(e=>e.responseId===previous?.responseId&&e.role==='assistant');
+    if(session.status!=='active'||m?.status!=='pending_confirmation'||!previous||previous.resolved||previous.token!==token||previous.sessionId!==sessionId||request?.id!==userEntryId||users.at(-2)?.id!==previous.requestEntryId||!ambiguousConfirmation(request.text)||spoken?.source!=='local_memory'||spoken.text!==previous.question)return {status:'rejected'};
+    if(previous.clarificationOf)return {status:'unconfirmed'};
+    const current=this.state.memories.filter(x=>x.status==='confirmed'&&memoryConflicts(m,x)).map(x=>x.id).sort();
+    if(JSON.stringify(current)!==JSON.stringify(previous.expectedIds))return {status:'stale'};
+    const offer={...previous,token:randomUUID(),requestEntryId:userEntryId,at:now(),responseId:null,
+      question:`刚才这句没确认清楚。${previous.question}`,clarificationOf:previous.token};
+    this.commit(s=>{const target=s.memories.find(m=>m.id===id);(target.clarifications??=[]).push({at:offer.at,source:{sessionId,entryId:userEntryId,quote:request.text},previousResponseId:previous.responseId});target.lastOffer=offer;});
+    return {status:'confirmation_required',memoryId:id,offer};
   }
   resolveConfirmation(id,token,sessionId,userEntryId,{deferUnclear=false}={}){
     const session=this.readSession(sessionId),users=session.entries.filter(e=>e.role==='user'),request=users.at(-1),m=this.state.memories.find(m=>m.id===id),offer=m?.lastOffer;

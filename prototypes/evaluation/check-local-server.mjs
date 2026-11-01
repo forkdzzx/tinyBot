@@ -8,7 +8,7 @@ import WebSocket,{WebSocketServer} from 'ws';
 import {createVoiceServer} from '../voice/server.mjs';
 const root=mkdtempSync(join(tmpdir(),'jarvis-server-'));
 const upstream=new WebSocketServer({host:'127.0.0.1',port:8793});
-const app=createVoiceServer({config:{key:'test-only',voice:'test-only'},endpoint:'ws://127.0.0.1:8793',port:8792,memoryRoot:root,withWake:false,extract:async()=>({result:{summary:'',memories:[]},usage:{}})});
+const app=createVoiceServer({config:{key:'test-only',voice:'test-only'},endpoint:'ws://127.0.0.1:8793',port:8792,memoryRoot:root,withWake:false,extractPractice:async()=>({result:{vocabulary:[],corrections:[]}}),extract:async()=>({result:{summary:'',memories:[]},usage:{}})});
 let phrase='';
 upstream.on('connection',ws=>ws.on('message',raw=>{
   const e=JSON.parse(raw),send=e=>ws.send(JSON.stringify(e));

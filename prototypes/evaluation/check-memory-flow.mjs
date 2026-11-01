@@ -25,7 +25,7 @@ const speak=async args=>{
   const finish=()=>{args.onEvent({type:'response.output_audio.started',response_id:args.responseId});args.onEvent({type:'response.output_audio.delta',response_id:args.responseId,delta:Buffer.alloc(960).toString('base64')});args.onEvent({type:'response.output_audio.done',response_id:args.responseId});};
   if(holdSpeech)await new Promise(resolve=>{held=()=>{finish();resolve();};});else finish();
 };
-const app=createVoiceServer({config:{key:'test',voice:'test'},endpoint:'ws://127.0.0.1:8797',port:8796,memoryRoot:root,withWake:false,extract:async()=>({result:{summary:'',memories:[]}}),speak});
+const app=createVoiceServer({config:{key:'test',voice:'test'},endpoint:'ws://127.0.0.1:8797',port:8796,memoryRoot:root,withWake:false,extractPractice:async()=>({result:{vocabulary:[],corrections:[]}}),extract:async()=>({result:{summary:'',memories:[]}}),speak});
 let ws;const events=[];
 async function wait(check){for(let i=0;i<300;i++){if(check())return;await delay(10);}throw new Error('integration_deadline');}
 async function input(text,args){
@@ -46,7 +46,8 @@ try{
   await wait(()=>ws.readyState===WebSocket.OPEN);ws.send(JSON.stringify({type:'start',mode:'manual'}));await wait(()=>events.some(e=>e.type==='local.ready'));
   let from=await input('请记住，我最喜欢红茶',args('我最喜欢红茶'));assert.equal((await completed(from)).status,'saved');
   from=await input('请记住，我现在最喜欢绿茶',args('我现在最喜欢绿茶'));assert.equal((await completed(from)).status,'confirmation_required');
-  from=await input('是的，按新的计');assert.equal((await completed(from)).status,'saved');assert.equal(app.store.search('喝什么').memories[0].text,'我现在最喜欢绿茶');
+  from=await input('对的，请保存吗？');assert.equal((await completed(from)).status,'confirmation_required');assert.equal(app.store.state.memories[0].status,'confirmed');
+  from=await input('你可以保存新的了。');assert.equal((await completed(from)).status,'saved');assert.equal(app.store.search('喝什么').memories[0].text,'我现在最喜欢绿茶');
   held=null;holdSpeech=true;from=await input('请记住，我现在最喜欢乌龙茶',args('我现在最喜欢乌龙茶'));await wait(()=>held);
   ws.send(JSON.stringify({type:'interrupt'}));await delay(30);const oldHeld=held;holdSpeech=false;
   from=await input('现不改。那我目前最喜欢喝的是什么茶？');oldHeld();
@@ -67,5 +68,5 @@ try{
   await wait(()=>events.slice(from).some(e=>e.type==='local.memory_speech_failed'));
   assert.ok(events.slice(from).some(e=>e.type==='local.notice'&&e.message.includes('语音播报暂时失败')));
   ws.send(JSON.stringify({type:'stop'}));await wait(()=>ws.readyState===WebSocket.CLOSED);
-  console.log(JSON.stringify({saved:true,confirmedReplacement:true,interruptedDeferAndQuestion:true,unclearReplyKeepsOldAndAnswers:true,scopedRecall:true,failedWriteNeverSpokeSuccess:true,speculativeProviderOutputBlocked:true,interruptedHostAudioDropped:true,buttonInterruptStopsHostAudio:true,speechFailureFallsBackToText:true},null,2));
+  console.log(JSON.stringify({saved:true,confirmedReplacement:true,ambiguousReplyClarifiedBeforeSaving:true,interruptedDeferAndQuestion:true,unclearReplyKeepsOldAndAnswers:true,scopedRecall:true,failedWriteNeverSpokeSuccess:true,speculativeProviderOutputBlocked:true,interruptedHostAudioDropped:true,buttonInterruptStopsHostAudio:true,speechFailureFallsBackToText:true},null,2));
 }finally{ws?.terminate();app.close();for(const c of upstream.clients)c.terminate();upstream.close();await delay(100);rmSync(root,{recursive:true,force:true});}

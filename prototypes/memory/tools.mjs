@@ -1,7 +1,7 @@
 import {ToolTurnGate} from '../voice/context-contract.mjs';
 import {sessionCreate} from '../voice/config.mjs';
 import {explicitRemember} from './store.mjs';
-import {confirmationReply} from './policy.mjs';
+import {confirmationReply,ambiguousConfirmation} from './policy.mjs';
 
 export const MEMORY_PROMPT_ID='voice-memory-v1.3-20261030';
 export function memorySession(voice){
@@ -36,6 +36,14 @@ export class MemoryTools {
     const request=this.history.session.entries.filter(e=>e.role==='user').at(-1);
     const parsed=confirmationReply(request?.text);
     const unclearReadback=!parsed&&this.store.favoriteDrinkReply(request?.text);
+    if(pending&&!parsed&&ambiguousConfirmation(request?.text)){
+      this.wroteThisTurn=true;
+      try{
+        const result=this.store.clarifyConfirmation(pending.memoryId,pending.offer.token,this.history.session.id,request.id);
+        if(result.status==='confirmation_required')this.currentOffer=result;
+        this.onResult({tool:'clarify_memory_confirmation',status:result.status,count:null});return result;
+      }catch{return {status:'failed'};}
+    }
     if(!pending||(!parsed&&!unclearReadback))return null;
     this.wroteThisTurn=true;
     try{

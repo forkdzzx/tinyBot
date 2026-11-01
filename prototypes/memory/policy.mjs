@@ -64,6 +64,26 @@ export function memoryConflicts(candidate,existing){
   if(['like','favorite'].includes(a.preferenceKind)&&['like','favorite'].includes(b.preferenceKind))return a.preferenceKind==='favorite'&&b.preferenceKind==='favorite';
   return true;
 }
+// Bounded equivalence for a single, unqualified drink fact. Do not remove
+// arbitrary Chinese words or let an extractor's shortened quote erase scope.
+// Unknown drink names, compound statements and temporal/negative qualifiers
+// deliberately fall back to the existing conservative conflict path.
+export function drinkFactEquivalence(memory,sourceText){
+  if(memory.kind!=='fact'||memory.correction||typeof sourceText!=='string')return null;
+  const identity=memoryIdentity(memory.key,memory.text,sourceText);
+  if(identity.key!=='preference.drink'||identity.correction)return null;
+  if(/[“”"「」『』?？]|不|没|别|如果|假如|假设|他说|她说|但是|不过|改成|换成|替换|现在|今天|最近|目前|以前|曾经|过去|将来|以后|明天|昨天|早上|晚上|周末|有时|偶尔|平时|通常|每天|每周|今年|去年|这次|本次|暂时|一直|长期|默认|更喜欢|比较|只在/u.test(sourceText))return null;
+  const core=memoryQuoteCore(memory.text).normalize('NFKC').replace(/\s/gu,'').replace(/[。.!！]+$/u,'');
+  const match=core.match(/^我(最喜欢|最爱|只喜欢|只爱|喜欢|爱)(?:喝|饮用)?(?:的(?:就)?是)?(红茶|绿茶|乌龙茶|普洱茶|白茶|黑茶|花茶|奶茶|咖啡|牛奶|果汁|可乐|汽水|白开水|矿泉水|豆浆)$/u);
+  if(!match)return null;
+  const kind=match[1].startsWith('最')?'favorite':match[1].startsWith('只')?'exclusive':'like';
+  if(kind!==(memory.preferenceKind??identity.preferenceKind))return null;
+  // Require this complete fact to appear as a clause in the original user
+  // turn. A harmless ASR lead-in such as "请对主，" is not part of the fact.
+  const source=memoryQuoteCore(sourceText).normalize('NFKC').replace(/\s/gu,'');
+  if(!source.split(/[，,。.!！；;]/u).includes(core))return null;
+  return `${identity.key}|${kind}|${match[2]}`;
+}
 export function additivePreference(key,text,context=text){
   return memoryIdentity(key,text,context).additive;
 }
@@ -78,6 +98,10 @@ function simpleConfirmation(text){
   // Within an outstanding heard memory question, ASR may transcribe 记 as 计.
   // Match the whole affirmative action, never an isolated homophone or negation.
   if(/^(?:是的|对|没错)?按新的[记计]$/u.test(s))return 'accept';
+  // Only a complete affirmative save request; question marks are rejected
+  // above. This parser never turns partial ASR into a final confirmation.
+  if(/^(?:对){1,3}(?:请)?保存(?:吧)?$/u.test(s))return 'accept';
+  if(/^(?:对的|是的)?(?:请)?保存(?:吧)?$/u.test(s)||/^(?:你)?可以(?:保存|更新|替换)新的(?:了|吧)?$/u.test(s))return 'accept';
   if(/^(?:对的?|是的|没错|好的?|确认)(?:就?(?:按|用)(?:新的|这个|这条)(?:记|计|保存|更新|替换)(?:吧)?)?$/u.test(s))return 'accept';
   if(['对','对的','是的','没错','确认','确认更新','确认替换','按新的记','对按新的记','是的按新的记','用新的替换','是的用新的替换','yes','yesplease','confirm'].includes(s))return 'accept';
   if(['不','不是','不对','不要替换','保留原来的','按原来的记','no','keeptheoldone'].includes(s))return 'reject';
@@ -94,3 +118,10 @@ export function confirmationReply(text){
   return {decision:simpleConfirmation(match[1]),followup:match[2]};
 }
 export const confirmationDecision=text=>confirmationReply(text)?.decision||null;
+// Ambiguous confirmation-like questions merit one clarification, never approval.
+export function ambiguousConfirmation(text){
+  if(typeof text!=='string'||/[“”"「」『』]/u.test(text))return false;
+  const s=stripSpokenLeadIn(text).replace(/[\s\p{P}]/gu,'');
+  return /^(?:对{1,3}|对的|是的)?(?:请)?(?:保存|更新|替换)(?:新的)?(?:吗|么)$/u.test(s)||
+    /^(?:你)?可以(?:保存|更新|替换)新的了?吗$/u.test(s);
+}

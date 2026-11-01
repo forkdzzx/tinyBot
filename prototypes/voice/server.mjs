@@ -5,6 +5,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import WebSocket, { WebSocketServer } from 'ws';
 import { ENDPOINT, loadConfig, sessionCreate, ACTIVE_PROMPT_ID } from './config.mjs';
+import {InputRecovery} from './input-recovery.mjs';
 import { ResponseGuard } from './guard.mjs';
 import { sessionCommand } from './lifecycle.mjs';
 import {timingDiagnostic} from './timing.mjs';
@@ -14,19 +15,29 @@ import {MemoryWorker} from '../memory/worker.mjs';
 import {memorySession,MemoryTools,MEMORY_PROMPT_ID} from '../memory/tools.mjs';
 import {explicitRemember} from '../memory/policy.mjs';
 import {memorySpeech,streamMemorySpeech} from './memory-speech.mjs';
+import {LearningArchive} from '../learning/archive.mjs';
+import {LearningWorker,waitForLearning,learningSpeech,learningContext} from '../learning/worker.mjs';
+import {PracticeTracker,recoverPractice} from '../learning/tracker.mjs';
+import {practiceEnd} from '../learning/intents.mjs';
 import {ModeController,loadSkills} from '../modes/controller.mjs';
 import {ModeTools,modeSessionRequest,modeContextMessage,MODE_PROMPT_ID} from '../modes/tools.mjs';
 
-export function createVoiceServer({config,endpoint=ENDPOINT,port=8766,memoryRoot=fileURLToPath(new URL('../../runtime/data/',import.meta.url)),withWake=true,extract,speak=streamMemorySpeech,memorySandbox=false,skillsRoot}={}){
+export function createVoiceServer({config,endpoint=ENDPOINT,port=8766,memoryRoot=fileURLToPath(new URL('../../runtime/data/',import.meta.url)),withWake=true,extract,speak=streamMemorySpeech,memorySandbox=false,skillsRoot,extractPractice,learningWaitMs=8000}={}){
 const modes=new ModeController(loadSkills(skillsRoot));
-let store,worker;
+let store,worker,learningArchive,learningWorker;
 function initializeMemory(){
 store=new MemoryStore(memoryRoot);
 worker=new MemoryWorker(store,{...(extract?{extract}:{}),onStatus:e=>{
   try{appendFileSync(new URL('../../runtime/voice/memory-worker.jsonl',import.meta.url),JSON.stringify({at:new Date().toISOString(),...e})+'\n',{mode:0o600});}catch{}
 }});
 worker.start();
+learningArchive=new LearningArchive(memoryRoot);recoverPractice(store,learningArchive);
+learningWorker=new LearningWorker(learningArchive,{...(extractPractice?{extract:extractPractice}:{}),onStatus:e=>{
+  try{appendFileSync(new URL('../../runtime/voice/learning-worker.jsonl',import.meta.url),JSON.stringify({at:new Date().toISOString(),...e})+'\n',{mode:0o600});}catch{}
+  for(const client of wss.clients)if(client.readyState===WebSocket.OPEN)client.send(JSON.stringify(learningState()));
+}});learningWorker.start();
 }
+function learningState(){return {type:'local.learning_state',...learningContext(learningArchive),pendingCount:learningArchive.state.segments.filter(s=>['queued','running'].includes(s.status)).length,failedCount:learningArchive.state.segments.filter(s=>s.status==='failed').length};}
 const host = `127.0.0.1:${port}`;
 const origin = `http://${host}`;
 const files = new Map([
@@ -69,7 +80,7 @@ wss.on('connection',client=> {
   let upstream=null, ready=false, closing=false, audioFrames=0;
   let creationTimer, closeTimer, cancelTimer;
   let paused=false, lastHeartbeat=Date.now();
-  let history=null,memoryTools=null,historyFinished=false;
+  let history=null,memoryTools=null,historyFinished=false,practice=null;
   let modeTools=null,modeScope=null;
   let modeNotice=null;
   let memoryOwned=false,memorySpeechAbort=null,memoryFeedbackTimer=null,turnRevision=0;
@@ -82,14 +93,21 @@ wss.on('connection',client=> {
     try { appendFileSync(logPath,JSON.stringify({at:new Date().toISOString(),ms:Math.round(performance.now()-started),...e})+'\n',{mode:0o600}); }
     catch { send({type:'local.error',message:'日志保存失败，停止本次验证'}); stop(); }
   };
+  const inputRecovery=new InputRecovery({
+    state:state=>send({type:'local.input_state',...state}),
+    stalled:state=>log({type:'local.asr_stalled',turn:state.turn}),
+    commit:state=>{log({type:'local.input_commit_requested',turn:state.turn});cloud({type:'input_audio_buffer.commit'});},
+    expired:state=>{log({type:'local.input_commit_timeout',turn:state.turn});fail('这句话仍未识别完成，本次聊天已结束，请重新开始。');}
+  });
   function finishHistory(reason){
     if(historyFinished)return;historyFinished=true;memoryTools?.close();modeTools?.close();
-    try{history?.end(reason);worker.kick();}
+    try{practice?.close(reason);history?.end(reason);worker.kick();learningWorker?.kick();}
     catch{send({type:'local.error',message:'文字历史或待提炼任务保存失败；请保留本地文件排查'});}
   }
   function stop(reason='client_end') {
     if(closing) return;
     closing=true; ready=false;
+    if(inputRecovery.active)log({type:'local.input_unfinished',...inputRecovery.snapshot()});inputRecovery.close();
     memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);cancelModeNotice();
     finishHistory(reason);
     clearTimeout(creationTimer); clearTimeout(cancelTimer); clearInterval(watchdog);
@@ -138,11 +156,19 @@ wss.on('connection',client=> {
       try{for(const event of state.events)forwardOutput(event);}catch{fail('模式提示或文字历史保存失败');}
     });
   }
+  async function finishPractice(jobs){
+    const revision=turnRevision;memoryOwned=true;memoryTools.wroteThisTurn=true;memoryTools.currentOffer=null;
+    try{
+      const results=jobs.length?await waitForLearning(Promise.all(jobs.map(j=>learningWorker.run(j.id))),learningWaitMs):[];
+      if(closing||revision!==turnRevision)return;
+      localMemoryFeedback({status:'learning_summary',message:learningSpeech(results??[{status:'queued'}])});
+    }catch{if(!closing&&revision===turnRevision)localMemoryFeedback({status:'learning_summary',message:'这段练习结束了，学习记录暂时没整理成功，原始文字已保留。已回到日常模式。'});}
+  }
   function localMemoryFeedback(result){
     if(closing)return;
     memoryOwned=true;clearTimeout(memoryFeedbackTimer);memorySpeechAbort?.abort();cancelModeNotice();
-    const source=result.status==='mode_control'?'local_mode':'local_memory';
-    const revision=turnRevision,id=`${source==='local_mode'?'mode':'memory'}-${randomUUID()}`,text=memorySpeech(result);
+    const source=result.status==='learning_summary'?'local_learning':result.status==='mode_control'?'local_mode':'local_memory';
+    const revision=turnRevision,id=`${source==='local_learning'?'learning':source==='local_mode'?'mode':'memory'}-${randomUUID()}`,text=memorySpeech(result);
     const controller=new AbortController();memorySpeechAbort=controller;
     contextFeedback={text,complete:false};
     // Clear any speculative conversation audio before sending authoritative text.
@@ -197,9 +223,10 @@ wss.on('connection',client=> {
       try{
         if(e.mode!=='diagnostic'){
           history=new HistoryRecorder(store,e.mode==='manual'?'manual':'wake');
-          modeScope=modes.begin();modeTools=new ModeTools(modeScope);
+          modeScope=modes.begin();modeTools=new ModeTools(modeScope,{learning:()=>learningContext(learningArchive)});
+          practice=new PracticeTracker(history,learningArchive);if(modeScope.snapshot().id==='english')practice.enter();
           history.session.initialMode=modeScope.snapshot().id;history.session.modeEvents=[];history.persist();
-          send({type:'local.mode_state',...modeScope.snapshot(),instructions:undefined});
+          send({type:'local.mode_state',...modeScope.snapshot(),instructions:undefined});send(learningState());
           memoryTools=new MemoryTools(store,history,{onResult:result=>log({type:'local.memory_tool',...result}),onFeedback:localMemoryFeedback});
           log({type:'local.history',sessionId:history.session.id});
         }
@@ -207,7 +234,7 @@ wss.on('connection',client=> {
       upstream=new WebSocket(endpoint,{headers:{'X-Api-Key':config.key},handshakeTimeout:15000,maxPayload:2*1024*1024});
       creationTimer=setTimeout(()=>fail('创建云端会话超时'),20000);
       upstream.on('open',()=>{
-        const request=history?modeSessionRequest(memorySession(config.voice),modeScope):sessionCreate(config.voice);
+        const request=history?modeSessionRequest(memorySession(config.voice),modeScope,{learning:()=>learningContext(learningArchive)}):sessionCreate(config.voice);
         log({type:'local.session_config',model:request.session.model,promptVersion:history?MODE_PROMPT_ID:ACTIVE_PROMPT_ID,memoryPromptVersion:history?MEMORY_PROMPT_ID:undefined,
           promptSha256:createHash('sha256').update(request.session.instructions).digest('hex')});
         cloud(request);
@@ -233,7 +260,7 @@ wss.on('connection',client=> {
           send({type:'local.ready'}); log({type:event.type});return;
         }
         if(event.type==='session.closed') {
-          finishHistory('provider_closed');
+          inputRecovery.close();finishHistory('provider_closed');
           cancelModeNotice();memorySpeechAbort?.abort();
           closing=true; ready=false; clearTimeout(creationTimer);
 
@@ -248,10 +275,13 @@ wss.on('connection',client=> {
           paused=false;
           memoryTools?.userStarted();history?.interrupt();
           modeTools?.userStarted();
-          send({type:'local.user_started'});
+          send({type:'local.user_started'});inputRecovery.started();
           if(guard.active) cancel();
         }
+        if(event.type==='conversation.item.input_audio_transcription.delta')inputRecovery.progress(event.delta||event.text||'');
+        if(event.type==='conversation.item.input_audio_transcription.failed'){inputRecovery.close();fail('这句话识别失败，请重新开始聊天。');return;}
         if(event.type==='conversation.item.input_audio_transcription.completed') {
+          inputRecovery.complete();
           const text=event.transcript||event.text||'';
           if(text.trim())history?.user(text);memoryTools?.userCompleted();modeTools?.userCompleted();
           const command=sessionCommand(text);
@@ -261,15 +291,19 @@ wss.on('connection',client=> {
             send({type:'local.waiting'});log({type:'local.waiting'});
           }
           if(!command&&history){
-            const modeResult=modeScope.input(text);
+            const wasEnglish=modeScope.snapshot().id==='english',summaryRequested=wasEnglish&&practiceEnd(text);
+            const modeResult=modeScope.input(text);let learningJobs=[];
+            if(wasEnglish&&modeResult.change?.mode!=='english'&&modeResult.change){learningJobs=practice.close(summaryRequested?'explicit_end':'mode_exit',history.currentUser);send(learningState());if(!summaryRequested)learningWorker.kick();}
+            if(modeResult.change?.mode==='english')practice.enter(history.session.entries.length);
             if(modeResult.change){
               const event={type:'local.mode_changed',...modeResult.change,at:new Date().toISOString(),userEntryId:history.currentUser};
               history.session.modeEvents.push(event);history.persist();log(event);
-              cloud(modeContextMessage(modeScope));log({type:'local.mode_context_sent',revision:modeScope.snapshot().revision});
+              cloud(modeContextMessage(modeScope,{learning:()=>learningContext(learningArchive)}));log({type:'local.mode_context_sent',revision:modeScope.snapshot().revision});
             }
             send({type:'local.mode_state',...modeScope.snapshot(),instructions:undefined});
             const reply=modeResult.handled?null:memoryTools.reply();
-            if(modeResult.handled){memoryTools.currentOffer=null;memoryTools.wroteThisTurn=true;localMemoryFeedback({status:'mode_control',message:modeResult.reply});}
+            if(summaryRequested){finishPractice(learningJobs);}
+            else if(modeResult.handled){memoryTools.currentOffer=null;memoryTools.wroteThisTurn=true;localMemoryFeedback({status:'mode_control',message:modeResult.reply});}
             else if(reply)localMemoryFeedback(reply);
             else if(explicitRemember(text)){
               memoryOwned=true;
@@ -322,6 +356,7 @@ wss.on('connection',client=> {
         audioFrames++;cloud({type:'input_audio_buffer.append',audio:e.audio});
       } else if(e.type==='unmute') cloud({type:'input_audio_unmute.commit'});
       else if(e.type==='mute') cloud({type:'input_audio_mute.commit'});
+      else if(e.type==='finish_input')inputRecovery.finish(e.turn);
       else if(e.type==='interrupt'){try{
         cancelModeNotice();
         memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);contextFeedback=null;
@@ -338,13 +373,13 @@ wss.on('connection',client=> {
   client.on('error',()=>stop('client_error'));
 });
 server.on('error',e=>{console.error(e.code||'Server error');process.exitCode=1;});
-return {server,modes,get store(){return store;},get worker(){return worker;},start(){return new Promise((resolve,reject)=>{
+return {server,modes,get learningArchive(){return learningArchive;},get learningWorker(){return learningWorker;},get store(){return store;},get worker(){return worker;},start(){return new Promise((resolve,reject)=>{
   // Own the listening port before recovering files; a second startup must not
   // mark the first process's still-active conversations as interrupted.
   const failed=e=>reject(e);server.once('error',failed);
   server.listen(port,'127.0.0.1',()=>{server.off('error',failed);try{initializeMemory();resolve(origin);}catch(error){server.close();reject(error);}});
 });},close(){
-  worker?.stop();for(const ws of [wss,wakeWss])for(const c of ws.clients)c.close();server.close();
+  worker?.stop();learningWorker?.stop();for(const ws of [wss,wakeWss])for(const c of ws.clients)c.close();server.close();
 }};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){

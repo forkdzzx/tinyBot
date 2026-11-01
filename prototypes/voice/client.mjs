@@ -1,11 +1,12 @@
 import { PCMPlayer,PlaybackReceipts } from './playback.mjs';
 import { SessionLifecycle } from './lifecycle.mjs';
 import { TurnTiming } from './timing.mjs';
-const CLIENT_BUILD='voice-modes-20261030';
+const CLIENT_BUILD='voice-learning-20261101';
 const el=id=>document.getElementById(id);
 let socket,wakeSocket,stream,inputContext,outputContext,capture,player;
 let generation=0,voiceGeneration=0,phase='disabled',ready=false,diagnostic=false;
 let wakeOnly=false;
+let inputState={active:false,stalled:false,commitRequested:false,turn:0};
 let pendingAudio=false,userText='',assistantText='',asrEnded=null,firstAudio=true;
 let volumeFrames=0,lastBarge=0,prebuffer=[],captureActive=false;
 let connectTimeout,playbackTimer,closeTimer,heartbeat,drowsyTimer,audioPump;
@@ -26,6 +27,7 @@ function buttons(){
   for(const id of ['start','direct','greet','wake-test'])el(id).disabled=!disabled;
   el('stop').disabled=disabled;el('end').disabled=!['connecting','chat'].includes(phase);
   el('interrupt').disabled=!ready;
+  el('finish-input').disabled=!ready||!inputState.active||!inputState.stalled||inputState.commitRequested;
 }
 function clearAudio(){playbackReceipts.interrupt();player?.clear();clearTimeout(playbackTimer);}
 function barge(){
@@ -33,6 +35,7 @@ function barge(){
   clearAudio();pendingAudio=true;assistantText='';el('assistant').textContent='';
   lastBarge=performance.now();lifecycle.interrupted();face('listening');send({type:'interrupt'});
 }
+function resetInput(){inputState={active:false,stalled:false,commitRequested:false,turn:0};el('input-help').textContent='';buttons();}
 function releaseAudio(){
   stream?.getTracks().forEach(t=>t.stop());stream=null;
   capture?.disconnect();capture=null;
@@ -41,7 +44,7 @@ function releaseAudio(){
 }
 function disable(message='交互已关闭 · 麦克风关闭'){
   generation++;voiceGeneration++;phase='disabled';ready=false;captureActive=false;prebuffer=[];
-  lifecycle.dispose();clearTimeout(connectTimeout);clearTimeout(closeTimer);clearTimeout(drowsyTimer);clearInterval(heartbeat);clearInterval(audioPump);
+  resetInput();lifecycle.dispose();clearTimeout(connectTimeout);clearTimeout(closeTimer);clearTimeout(drowsyTimer);clearInterval(heartbeat);clearInterval(audioPump);
   clearAudio();
   send({type:'stop'});
   const old=socket;socket=null;
@@ -64,7 +67,7 @@ function endChat(message='本次会话已结束'){
   if(!socket)return;
   if(phase==='ending')return;
   phase='ending';ready=false;prebuffer=[];clearInterval(audioPump);lifecycle.dispose();clearAudio();face('idle');buttons();
-  clearTimeout(connectTimeout);status(`${message} · 正在断开云端`);send({type:'stop'});
+  resetInput();clearTimeout(connectTimeout);status(`${message} · 正在断开云端`);send({type:'stop'});
   const old=socket;
   old.onclose=()=>{if(socket===old)finishChat(message);};
   closeTimer=setTimeout(()=>{if(socket===old)old.close();},3000);
@@ -106,7 +109,12 @@ function beginCloud(ticket=null){
     try{
       const e=JSON.parse(data);eventType=e.type;
       if(e.type!=='response.output_audio.delta')log(e.type);
+      if(e.type==='local.learning_state'){el('learning').textContent=`学习记录：已整理 ${e.segmentCount} 段、练习 ${e.userTurnCount} 轮${e.pendingCount?' · 还有记录在整理':''}${e.failedCount?' · 有记录整理失败，文字历史已保留':''}${e.lastVocabulary?.length?' · 最近接触：'+e.lastVocabulary.map(w=>w.word).join('、'):''}（不代表掌握程度）`;return;}
       if(e.type==='local.mode_state'){el('mode').textContent=`当前模式：${e.name}${e.autoLocked?' · 本次不自动切换':''}${e.announcement?' · '+e.announcement:''}`;return;}
+      if(e.type==='local.input_state'){
+        if(phase==='ending')return;inputState=e;buttons();
+        el('input-help').textContent=e.active?(e.commitRequested?'正在结束这句的识别，请稍候……':e.stalled?'这句话还没有识别完成。若已说完，可点“我说完了”；如果还在想，可以继续等。':''):'';return;
+      }
       if(e.type==='local.closed'){socket.close();return;}
       if(e.type==='local.error'){endChat(e.message);return;}
       if(phase==='ending')return;
@@ -236,6 +244,7 @@ el('direct').onclick=()=>enable(true,false);
 el('greet').onclick=()=>enable(false,false);
 el('wake-test').onclick=()=>enable(true,true,true);
 el('interrupt').onclick=barge;
+el('finish-input').onclick=()=>{if(!ready||!inputState.active||!inputState.stalled||inputState.commitRequested)return;send({type:'finish_input',turn:inputState.turn});inputState.commitRequested=true;buttons();};
 el('end').onclick=()=>endChat();
 el('stop').onclick=()=>disable();
 window.addEventListener('pagehide',()=>disable());

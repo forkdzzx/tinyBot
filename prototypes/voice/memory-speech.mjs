@@ -3,7 +3,7 @@ import {randomUUID} from 'node:crypto';
 import {ENDPOINT,sessionCreate} from './config.mjs';
 
 export function memorySpeech(result){
-  if(result.status==='mode_control')return result.message;
+  if(['mode_control','learning_summary'].includes(result.status))return result.message;
   if(result.status==='unconfirmed')return `这次没有完成确认，先保留原记录。${result.readback||''}`;
   if(result.status==='recalled')return result.readback;
   if(result.readback&&['deferred_confirmation','kept_existing'].includes(result.status))return `${result.status==='deferred_confirmation'?'好，先不改。':'好，保留原来的记录。'}${result.readback}`;
