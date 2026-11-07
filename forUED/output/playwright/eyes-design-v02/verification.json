@@ -1,0 +1,122 @@
+{
+  "date": "2026-11-06",
+  "timezone": "Asia/Shanghai",
+  "scope": "Jarvis eye design v0.2 isolated browser preview",
+  "passed": true,
+  "version": "0.2",
+  "stateCount": 24,
+  "modeGeometry": {
+    "idle": {
+      "daily": [
+        "bean",
+        "bean"
+      ],
+      "work": [
+        "hex",
+        "hex"
+      ],
+      "companion": [
+        "star",
+        "star"
+      ],
+      "english": [
+        "vertical",
+        "vertical"
+      ]
+    },
+    "listening": {
+      "daily": [
+        "iris",
+        "iris"
+      ],
+      "work": [
+        "hexiris",
+        "hexiris"
+      ],
+      "companion": [
+        "stariris",
+        "stariris"
+      ],
+      "english": [
+        "verticaliris",
+        "verticaliris"
+      ]
+    },
+    "speaking": {
+      "daily": [
+        "bean",
+        "bean"
+      ],
+      "work": [
+        "bracket",
+        "bracket"
+      ],
+      "companion": [
+        "comic",
+        "comic"
+      ],
+      "english": [
+        "doublebean",
+        "doublebean"
+      ]
+    }
+  },
+  "checked": [
+    "catalogue and unique eyes",
+    "all four modes in idle/listening/speaking",
+    "fullscreen start/end/replay/cancel",
+    "effects toggle",
+    "reduced animation",
+    "pause/static state switching",
+    "English caption",
+    "DND persists",
+    "390/320 CSS widths",
+    "three scenarios",
+    "off after burst",
+    "no runtime errors"
+  ],
+  "motion": {
+    "signatures": {
+      "daily": "elastic-arc",
+      "work": "step-and-hold",
+      "companion": "squash-spring-hold",
+      "english": "alternating-dialogue"
+    },
+    "uniqueTrajectories": {
+      "idle": 4,
+      "listening": 4,
+      "speaking": 4
+    },
+    "liveDistinctTransforms": {
+      "daily": 4,
+      "work": 4,
+      "companion": 4,
+      "english": 4
+    }
+  },
+  "visualReview": {
+    "completed": true,
+    "reviewers": 2,
+    "findingsResolved": [
+      "Different mode motion choreography replaces speed-only variation",
+      "Thumbnail framing preserves top symbols"
+    ],
+    "screenshots": [
+      "catalogue-daily.png",
+      "modes-idle.png",
+      "modes-listening.png",
+      "modes-speaking.png",
+      "excited-burst.png",
+      "mobile-top.png",
+      "mobile-controls.png",
+      "overview.png"
+    ]
+  },
+  "notVerified": [
+    "User aesthetic acceptance",
+    "Real voice and semantic event integration",
+    "Real utterance cancellation",
+    "Target hardware performance and power",
+    "Physical screen readability and joint motion"
+  ]
+}

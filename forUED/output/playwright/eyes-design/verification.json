@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-05",
+  "scope": "Independent design preview; no voice or hardware integration",
+  "result": "passed",
+  "state_count": 18,
+  "viewport_widths_css_px": [
+    1280,
+    390,
+    320
+  ],
+  "checks": [
+    "state selection",
+    "pause then static selection",
+    "off screen black and all face content hidden",
+    "English caption",
+    "small aspect layout without eye-caption overlap",
+    "DND retained during listening",
+    "reduced animation produces stable geometry and no symbol",
+    "dialogue scene reaches interruption and late-result stages with empty old caption",
+    "support scene completes in work mode and encouraging pose",
+    "no page errors or console warnings",
+    "JavaScript syntax",
+    "new documentation links and task counts"
+  ],
+  "not_verified": [
+    "real audio timing",
+    "semantic emotion selection",
+    "hardware raster dimensions and readability",
+    "power/backlight",
+    "joint behavior",
+    "8-hour stability"
+  ],
+  "screenshots": [
+    "desktop.png",
+    "happy.png",
+    "puzzled.png",
+    "work-encouraging.png",
+    "mobile-top.png",
+    "mobile-controls.png"
+  ],
+  "notes": [
+    "Mobile full-page capture had capture stitching artifacts; replaced with separate viewport captures.",
+    "Historical runtime/manual-session-probe.json is absent from this worktree; existing historical link not altered."
+  ]
+}

@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jarvis · 眼神交互设计 v0.3</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;color:#24373d;background:#f3f3ee;color-scheme:light}*{box-sizing:border-box}body{margin:0}button,select,input{font:inherit}button,select{color:inherit}button{cursor:pointer}button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #098797;outline-offset:4px}button:disabled{opacity:.45;cursor:default}.page{max-width:1380px;margin:auto;padding:28px 32px 44px}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #d4ddd7;padding-bottom:20px;gap:14px}.brand{letter-spacing:4px;font-weight:700}.edition{font-size:12px;letter-spacing:1px;color:#667c78}.intro{display:flex;justify-content:space-between;gap:18px;align-items:end;padding:26px 0}h1{font-size:clamp(26px,3.5vw,40px);letter-spacing:-1px;margin:0 0 8px;font-weight:600}p{margin:0;line-height:1.7}.intro p{font-size:14px;color:#637873}.version{font-size:12px;white-space:nowrap;border:1px solid #c9d8d0;border-radius:40px;padding:8px 13px}.workspace{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(330px,1fr);gap:28px;align-items:start}.stage-panel{min-width:0;position:sticky;top:18px}.stage-meta{display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:12px}.state-name{font-weight:650}.state-name:before{content:'●';color:#1d9bab;margin-right:7px}.state-sub{color:#6b8178;font-size:12px}.device{background:#192129;padding:11px;border-radius:40px;box-shadow:0 14px 30px #172a3020}.screen{aspect-ratio:1;position:relative;overflow:hidden;background:#03070c;border-radius:30px;isolation:isolate}.screen.wide{aspect-ratio:4/3}#face{display:block;width:100%;height:100%}.screen-label{position:absolute;top:5%;right:6%;font-size:12px;color:#b6d4dd;letter-spacing:.5px;padding:5px 8px;border-radius:6px;background:#03070cb8;z-index:3}.captions{position:absolute;left:6%;right:6%;bottom:7%;color:#ecf6f9;font-size:clamp(16px,1.5vw,21px);line-height:1.5;text-align:center;z-index:4;min-height:3em;display:flex;align-items:center;justify-content:center;pointer-events:none}#caption{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;background:#03070cd9;border-radius:10px;padding:4px 10px}#caption:empty{display:none}.screen.off{background:#000}.screen.off>*{visibility:hidden}.screen-note{font-size:12px;color:#71877d;margin-top:12px;line-height:1.65}.controls{display:flex;flex-wrap:wrap;align-items:center;gap:11px 14px;padding:16px 0;border-bottom:1px solid #d4ddd7}.field,.toggle{display:flex;align-items:center;gap:7px;font-size:13px;color:#526d62}.toggle{cursor:pointer}input[type=checkbox]{width:16px;height:16px;margin:0;accent-color:#0a8596}select,.plain-btn{border:1px solid #c4d3c9;border-radius:8px;background:#fcfdf8;padding:8px 10px;font-size:13px}.plain-btn{min-height:36px}.primary{background:#176e7d;border-color:#176e7d;color:white}.plain-btn[aria-pressed=true]{background:#205d68;color:white}.explanation{display:grid;gap:8px;margin-top:17px;border-left:3px solid #a2c8c3;padding-left:13px}.explanation strong{font-size:16px;font-weight:600}.explanation p{font-size:13px;color:#637c6f}.mode-row{margin-top:22px}.section-label{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#5f7a6d;margin:0 0 10px;letter-spacing:1px;gap:8px}.section-label span{letter-spacing:0;color:#85968e}.mode-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.mode-card{border:1px solid #ccd8ce;background:#fbfcf6;border-radius:10px;padding:5px;text-align:left;min-width:0}.mode-card svg{width:100%;display:block;border-radius:6px;background:#040a10}.mode-card .mode-title{font-size:12px;display:block;padding:7px 3px 2px;font-weight:600}.mode-card .mode-detail{font-size:10px;display:block;color:#6e8175;padding:0 3px 5px;line-height:1.5}.mode-card[aria-pressed=true]{border-color:#158492;box-shadow:inset 0 0 0 1px #158492;background:#e9f3ec}.group{margin-bottom:20px}.state-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.state-btn{border:1px solid #d0dcd2;background:#fbfcf7;border-radius:10px;padding:6px;min-width:0;text-align:left;transition:background .15s}.state-btn:hover{background:#edf5eb;border-color:#8cbab1}.state-btn[aria-pressed=true]{border-color:#188796;box-shadow:inset 0 0 0 1px #188796;background:#e5f2e9}.state-btn svg{display:block;width:100%;aspect-ratio:2;background:#050b12;border-radius:6px}.state-btn .zh{display:block;font-size:13px;font-weight:600;padding:7px 3px 2px}.state-btn .en{display:block;font-size:9px;letter-spacing:.5px;color:#728478;padding:0 3px 3px}.scenario{margin-top:28px;border-top:1px solid #cddbd0;padding-top:23px}.scenario-head{display:flex;justify-content:space-between;align-items:center;gap:20px}h2{font-size:19px;font-weight:600;margin:0 0 6px}.scenario-head p{font-size:13px;color:#69816f}.scenario-buttons{display:flex;flex-wrap:wrap;gap:8px}.scenario-btn{padding:10px 13px;border:1px solid #c5d7c9;background:#fcfdf8;border-radius:8px;font-size:13px}.scenario-btn[aria-pressed=true]{background:#176e7d;color:white}.timeline{display:flex;gap:5px;margin:17px 0 10px}.step{height:4px;flex:1;background:#dbe4da;border-radius:3px}.step.current{background:#118698}.step.past{background:#83bbb1}#scenario-status{font-size:13px;min-height:26px;color:#567564}.footnotes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;border-top:1px solid #d2ded2;margin-top:25px;padding-top:23px}.footnotes strong{display:block;font-size:13px;margin-bottom:5px}.footnotes p,footer{font-size:12px;color:#718275}footer{margin-top:25px;line-height:1.7}footer a{color:#327789;text-underline-offset:3px}
+@media(max-width:1000px){.workspace{grid-template-columns:minmax(0,1.1fr) minmax(290px,1fr);gap:20px}.page{padding:24px}.scenario-head{align-items:start;flex-direction:column}.mode-card .mode-detail{display:none}.stage-panel{position:static}}
+@media(max-width:720px){.page{padding:20px 17px 30px}.workspace{grid-template-columns:minmax(0,1fr);gap:26px}.stage-panel{max-width:560px;width:100%;margin:auto}.version{display:none}.state-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.device{padding:9px;border-radius:32px}.screen{border-radius:24px}.captions{font-size:17px}.footnotes{grid-template-columns:1fr;gap:15px}.edition{font-size:10px}.mode-card .mode-detail{display:block}.state-btn .zh{font-size:12px}}
+@media(max-width:390px){.state-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.mode-card .mode-detail{display:none}.captions{font-size:15px}.screen-label{font-size:10px}.mode-grid{gap:5px}.controls{gap:10px}.intro p{font-size:13px}}
+#art{isolation:isolate}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important}}
+</style></head>
+<body><main class="page">
+<header class="top"><div class="brand">JARVIS</div><div class="edition">EXPRESSION STUDY · 2026.11</div></header>
+<section class="intro"><div><h1>这一次，眼睛有戏。</h1><p>选择表情或模式观察切换，打开慢放可以暂停查看中间画面。</p></div><span class="version">交互设计预览 · v0.3</span></section>
+<div class="workspace"><section class="stage-panel" aria-label="机器人屏幕预览">
+<div class="stage-meta"><span class="state-name" id="state-name">待机</span><span class="state-sub" id="state-sub">日常模式 · 展示模拟</span></div>
+<div class="device"><div class="screen" id="screen"><svg id="face" viewBox="0 0 720 720" role="img" aria-label="Jarvis 眼神设计模拟"><defs><filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="8"/></filter></defs><g id="art"></g></svg><div class="screen-label" id="screen-label"></div><div class="captions"><div id="caption"></div></div></div></div>
+<p class="screen-note" id="screen-note">720 × 720 方屏比例预览；浏览器缩放不代表实机尺寸、亮度或 20–50 cm 可读性已验收。</p>
+<div class="controls"><label class="field">模式<select id="mode"><option value="daily">日常</option><option value="work">工作</option><option value="companion">陪伴</option><option value="english">英语练习</option></select></label><label class="field">屏幕<select id="viewport"><option value="square">720 × 720</option><option value="small">320 × 240</option></select></label><button class="plain-btn primary" id="scenario-transitions" aria-pressed="false" type="button">演示渐进切换</button><label class="toggle"><input type="checkbox" id="slow">切换慢放 ×3</label><button class="plain-btn" id="replay" type="button">重播演出</button><button class="plain-btn" id="pause" type="button" aria-pressed="false">暂停动画</button><label class="toggle"><input type="checkbox" id="symbols" checked>情绪特效</label><label class="toggle"><input type="checkbox" id="reduced">减弱动画</label><label class="toggle"><input type="checkbox" id="dnd">勿扰</label></div>
+<p class="screen-note" id="transition-readout"></p>
+<div class="explanation" aria-live="polite"><strong id="intent-title"></strong><p id="intent-description"></p><p id="motion-description"></p></div>
+<section class="mode-row" aria-label="四种模式对照"><div class="section-label">同一个眼神，四种演法 <span id="compare-state">待机</span></div><div class="mode-grid" id="mode-grid"></div></section>
+</section><section class="catalogue" id="catalogue" aria-label="选择眼神状态"></section></div>
+<section class="scenario" aria-label="情景演示"><div class="scenario-head"><div><h2>把眼神放回对话里</h2><p>本地视觉模拟，不播放声音，也不采集麦克风。</p></div><div class="scenario-buttons"><button class="scenario-btn" id="scenario-dialogue" type="button" aria-pressed="false">问答与插话 · 13 秒</button><button class="scenario-btn" id="scenario-support" type="button" aria-pressed="false">一起解题 · 12 秒</button><button class="scenario-btn" id="scenario-celebrate" type="button" aria-pressed="false">过关啦！ · 8 秒</button><button class="plain-btn" id="stop-scenario" type="button" disabled>停止演示</button></div></div><div class="timeline" id="timeline" aria-hidden="true"></div><p id="scenario-status" role="status">先试试「兴奋」「好奇」「大笑」，再切换模式比较。重播演出可再次查看完整特效。</p></section>
+<section class="footnotes" aria-label="设计边界"><div><strong>活泼，也有不同的性格</strong><p>日常像好奇伙伴，工作像热情解题搭档，陪伴像漫画玩伴，英语像会鼓励你的口语伙伴。</p></div><div><strong>满屏演出，随时能打断</strong><p>兴奋有 3.6 秒星轨和彩带。切换表情、模拟插话或黑屏会清掉旧演出；字幕保留在前景。</p></div><div><strong>眼神仍以真实交互为准</strong><p>此页全部为设计模拟，未接真实音频、电机或电源。勿扰和“等我想想”仍有各自的安静语义。</p></div></section>
+<footer>原创眼形与预览代码 · 设计研究参考 <a href="https://github.com/Aithena/emotion-ball" target="_blank" rel="noopener noreferrer">emotion-ball</a> 的配置化表达思路。未复制其源码或眼环数据。几何、动画及特效均本地生成。</footer>
+</main>
+<script src="../../design/eyes/artwork.js"></script>
+<script src="../../design/eyes/transitions.js"></script>
+<script>
+(()=>{'use strict';
+const $ = id => document.getElementById(id);
+const {modes, defs, geometry, coreMotion, eyePose, faceMarkup, burst} = globalThis.JarvisEyeArtwork;
+const {createTransition, blendPose} = globalThis.JarvisEyeTransitions;
+let selected = 'idle', mode = 'daily', viewport = 'square', clock = 0, enteredAt = 0;
+const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+let paused = false, reduced = motionPreference.matches, effects = true, dnd = false;
+let burstMode = mode;
+let raf = 0, lastFrame = 0, lastPaint = 0, scene = null, sceneStart = 0, sceneIndex = -1, customCaption = null;
+const transition = createTransition({state: selected, mode}, clock);
+let lastPoses = null, startPoses = null, targetPosesAtStart = null;
+const transitionNames = {
+  idle: '就绪', blackout: '黑屏', interrupt: '插话', instant: '直接显示', device: '设备状态',
+  wake: '屏幕唤醒', quiet: '安静等待', focus: '目光聚焦', mode: '模式切换', emotion: '情绪切换', state: '状态切换',
+};
+function thumb(id,mid){return `<svg viewBox="0 0 720 460" aria-hidden="true">${faceMarkup(id,mid,0,1000,{height:720,still:true,mini:true,effects:true})}</svg>`;}
+function buildCatalog(){const host=$('catalogue');host.replaceChildren();for(let group=0;group<3;group++){const section=document.createElement('div');section.className='group';const entries=Object.entries(defs).filter(([,d])=>d.group===group);const heading=document.createElement('div');heading.className='section-label';heading.textContent=['交互状态','情绪表达','安静与设备状态'][group];const count=document.createElement('span');count.textContent=`${entries.length} 种`;heading.append(count);const grid=document.createElement('div');grid.className='state-grid';for(const[id,d]of entries){const b=document.createElement('button');b.type='button';b.className='state-btn';b.dataset.state=id;b.setAttribute('aria-pressed',String(id===selected));b.innerHTML=thumb(id,mode)+`<span class="zh">${d.name}</span><span class="en">${d.en}</span>`;b.addEventListener('click',()=>{stopScene();if(id==='dnd'){dnd=true;$('dnd').checked=true;}choose(id);});grid.append(b);}section.append(heading,grid);host.append(section);}}
+function buildModes(){const host=$('mode-grid');host.replaceChildren();$('compare-state').textContent=defs[selected].name;for(const[id,m]of Object.entries(modes)){const b=document.createElement('button');b.type='button';b.className='mode-card';b.dataset.mode=id;b.setAttribute('aria-pressed',String(id===mode));b.setAttribute('aria-label',`${m.name}模式：${defs[selected].name}对照`);b.innerHTML=thumb(selected,id)+`<span class="mode-title">${m.name}</span><span class="mode-detail">${m.detail}</span>`;b.addEventListener('click',()=>changeMode(id));host.append(b);}}
+function drawOptions(state) {
+  return {
+    height: viewport === 'small' ? 540 : 720, still: reduced, entry: false,
+    quiet: dnd || state === 'waiting' || state === 'dnd', effects: effects && !reduced,
+  };
+}
+function targetPoses(frame) {
+  const age = clock - (frame.layers.find(layer => layer.state === selected && layer.mode === mode)?.enteredAtMs ?? enteredAt);
+  return [0, 1].map(side => eyePose(selected, mode, clock, age, side, drawOptions(selected)));
+}
+
+function choose(id, caption = null, options = {}) {
+  if (!Object.hasOwn(defs, id)) id = 'idle';
+  const nextMode = options.mode ?? mode;
+  if (!Object.hasOwn(modes, nextMode)) return;
+  const changedMode = mode !== nextMode;
+  const changedState = selected !== id;
+  const retarget = changedMode || changedState || options.interrupt || options.immediate;
+  if (retarget) {
+    startPoses = selected === 'off' ? null : lastPoses;
+    const frame = transition.setTarget({state: id, mode: nextMode}, clock, {
+      interrupt: options.interrupt, immediate: paused || options.immediate, reduced,
+      durationScale: $('slow').checked ? 3 : 1,
+    });
+    selected = id;
+    mode = nextMode;
+    if (changedState) {
+      enteredAt = clock;
+      if (selected === 'excited') burstMode = mode;
+    }
+    targetPosesAtStart = targetPoses(frame);
+  }
+  if (options.replay) {
+    enteredAt = clock;
+    burstMode = mode;
+  }
+  if (changedMode) {
+    $('mode').value = mode;
+    buildCatalog();
+  }
+  customCaption = caption;
+  updateUI();
+  buildModes();
+  paint();
+  schedule();
+}
+function updateUI(){const d=defs[selected];$('state-name').textContent=d.name;$('state-sub').textContent=`${modes[mode].name}模式 · ${scene?'情景模拟':'展示模拟'}`;$('intent-title').textContent=d.title;$('intent-description').textContent=d.desc;$('motion-description').textContent=d.note;$('face').setAttribute('aria-label',`Jarvis ${d.name}眼神，${modes[mode].name}模式，设计模拟`);$('screen').classList.toggle('off',selected==='off');$('screen').dataset.state=selected;$('screen').dataset.mode=mode;const flags=[];if(dnd&&selected!=='dnd')flags.push('勿扰');if(d.label)flags.push(d.label);$('screen-label').textContent=flags.join(' · ');$('screen-label').style.display=flags.length?'block':'none';$('caption').textContent=customCaption??(mode==='english'&&d.english?d.english:d.caption);$('pause').textContent=paused?'继续动画':'暂停动画';$('pause').setAttribute('aria-pressed',String(paused));$('replay').disabled=selected==='off';document.querySelectorAll('.state-btn').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.state===selected)));}
+function paint() {
+  const frame = transition.sample(clock);
+  const live = targetPoses(frame);
+  lastPoses = !frame.settled && startPoses
+    ? live.map((pose, side) => blendPose(startPoses[side], pose, frame.easedProgress, targetPosesAtStart[side]))
+    : live;
+  const age = clock - enteredAt;
+  const pieces = [];
+  // Celebration belongs to the event. Its clock and palette survive a mode
+  // transition while its particles disappear immediately on a state change.
+  const bursting = selected === 'excited' && effects && !dnd && !reduced && age <= 3600;
+  if (bursting) pieces.push(burst(age, drawOptions(selected).height, modes[burstMode], false));
+  const dominant = frame.layers.reduce((best, layer) => !best || layer.weight > best.weight ? layer : best, null);
+  for (const layer of frame.layers) {
+    if (layer.state === 'off') continue;
+    const currentState = layer.state === selected;
+    const options = drawOptions(layer.state);
+    options.poses = lastPoses;
+    options.burst = false;
+    if (!currentState && drawOptions(selected).quiet) options.effects = false;
+    let art = faceMarkup(layer.state, layer.mode, clock, clock - layer.enteredAtMs, options);
+    if (layer !== dominant) art = art.replace(/ id="(?:left|right)-eye"/g, '');
+    pieces.push(frame.settled ? art : `<g data-face="${layer.state}/${layer.mode}" opacity="${layer.weight}" style="mix-blend-mode:plus-lighter">${art}</g>`);
+  }
+  $('art').innerHTML = pieces.join('');
+  $('face').dataset.fullscreen = String(bursting);
+  $('face').dataset.transition = frame.kind;
+  $('face').dataset.progress = frame.progress.toFixed(3);
+  const percent = Math.round(frame.progress * 100);
+  const time = frame.durationMs;
+  const readout = !time ? transitionNames[frame.kind]
+    : `${transitionNames[frame.kind]} · ${time} ms · ${percent}%${paused && !frame.settled ? '（已暂停）' : ''}`;
+  if ($('transition-readout').textContent !== readout) $('transition-readout').textContent = readout;
+}
+function schedule(){if(!raf&&!paused&&!document.hidden)raf=requestAnimationFrame(frame);}
+function frame(now) {
+  raf = 0;
+  if (paused || document.hidden) return;
+  if (!lastFrame) lastFrame = now;
+  // Advance the design clock only when presenting a frame. A click between
+  // two paints then samples exactly the weights and pose visible on screen.
+  if (now - lastPaint >= 28) {
+    clock += Math.min(80, now - lastFrame);
+    lastFrame = lastPaint = now;
+    advanceScene();
+    paint();
+  }
+  schedule();
+}
+function setPaused(v){paused=v;lastFrame=0;if(raf){cancelAnimationFrame(raf);raf=0;}updateUI();paint();schedule();}
+function changeMode(id) {
+  if (!Object.hasOwn(modes, id)) return;
+  stopScene();
+  choose(selected, customCaption, {mode: id});
+}
+const scenes={dialogue:{name:'问答与插话',duration:13000,steps:[{at:0,state:'listening',caption:'请解释一下 Java 接口。',text:'01 · 圆瞳与接收弧：正在倾听。'},{at:1800,state:'thinking',caption:'',text:'02 · 豆眼与思考环：组织回答。'},{at:3400,state:'speaking',caption:'接口描述一种能力和约定……',text:'03 · 模拟音频开始：说话眼形与声波启动。'},{at:6200,interrupt:true,state:'listening',caption:'',text:'04 · 用户插话：立即取消旧字幕与特效。'},{at:7400,state:'listening',caption:'',text:'05 · 旧轮次结果迟到：忽略，保持倾听。'},{at:8800,state:'thinking',caption:'',text:'06 · 接住新问题，重新思考。'},{at:10200,state:'speaking',caption:'好，我们先从这个例子说起。',text:'07 · 回答新问题，不续播旧内容。'},{at:12800,state:'listening',caption:'',text:'08 · 模拟播放结束，恢复倾听。'}]},support:{name:'一起解题',duration:12000,mode:'work',steps:[{at:0,state:'listening',caption:'这个问题一直没解决，好烦。',text:'01 · 六角瞳心：工作伙伴认真听。'},{at:2000,state:'empathetic',caption:'这确实挺难，我们一起想想。',text:'02 · 泪滴眼：接住挫折，不拿用户开玩笑。'},{at:4300,state:'thinking',caption:'',text:'03 · 思考泡泡与代码标记：寻找线索。'},{at:6500,state:'determined',caption:'找到方向了，先看最小复现。',text:'04 · 火焰眼和箭头：有了方向，一起推进。'},{at:9500,state:'encouraging',caption:'线索已经有了，继续冲！',text:'05 · 眨眼加亮星：工作也可以有精神。'}]},celebrate:{name:'过关啦',duration:8000,mode:'companion',steps:[{at:0,state:'curious',caption:'最后一关怎么样了？',text:'01 · 大小圆眼：等你分享进展。'},{at:1700,state:'surprised',caption:'真的过了？',text:'02 · 漫画惊讶：短暂睁大。'},{at:2900,state:'excited',caption:'太棒了！这次终于过了！',text:'03 · 3.6 秒满屏星轨和彩带，字幕始终在前景。'},{at:6600,state:'proud',caption:'漂亮，拿下！',text:'04 · 演出收回，钻石眼留下胜利感。'},{at:7800,state:'listening',caption:'',text:'05 · 回到倾听，接住下一句话。'}]}};
+scenes.transitions = {
+  name: '渐进切换', duration: 11000,
+  steps: [
+    {at: 0, state: 'idle', mode: 'daily', text: '从日常待机开始。'},
+    {at: 1600, state: 'thinking', text: '状态切换 · 目光向上，一只眼睛逐渐变成思考环。'},
+    {at: 3700, state: 'love', text: '情绪切换 · 目光回到中央，心形逐渐浮现。'},
+    {at: 6000, state: 'idle', text: '回到日常待机，准备比较模式。'},
+    {at: 7900, state: 'idle', mode: 'work', text: '模式切换 · 圆豆渐变为六角眼，代码标记随之出现。'},
+    {at: 9900, state: 'listening', interrupt: true, caption: '', text: '用户插话 · 立即聚焦，接住新一轮。'},
+  ],
+};
+function startScene(id) {
+  stopScene(false);
+  scene = id; sceneStart = clock; sceneIndex = -1;
+  const steps = scenes[id].steps;
+  $('timeline').replaceChildren(...steps.map(() => {
+    const step = document.createElement('span'); step.className = 'step'; return step;
+  }));
+  $('stop-scenario').disabled = false;
+  $(`scenario-${id}`).setAttribute('aria-pressed', 'true');
+  setPaused(false);
+  advanceScene();
+}
+function advanceScene() {
+  if (!scene) return;
+  const spec = scenes[scene], elapsed = clock - sceneStart;
+  const idx = spec.steps.findLastIndex(step => elapsed >= step.at);
+  if (idx !== sceneIndex) {
+    sceneIndex = idx;
+    const step = spec.steps[idx];
+    choose(step.state, step.caption, {mode: step.mode ?? (idx === 0 ? spec.mode : mode), interrupt: step.interrupt});
+    $('scenario-status').textContent = step.text;
+    [...$('timeline').children].forEach((e, i) => e.className = 'step' + (i < idx ? ' past' : '') + (i === idx ? ' current' : ''));
+  }
+  if (elapsed >= spec.duration) {
+    stopScene(false);
+    $('scenario-status').textContent = `${spec.name}演示完成。可重播或选择任意眼神继续查看。`;
+  }
+}
+function stopScene(clear=true){const had=!!scene;scene=null;sceneIndex=-1;$('stop-scenario').disabled=true;Object.keys(scenes).forEach(id=>$(`scenario-${id}`).setAttribute('aria-pressed','false'));if(clear){$('timeline').replaceChildren();$('scenario-status').textContent=had?'演示已停止。旧演出已清理。':'正在查看单个眼神；可点击重播演出。';}updateUI();}
+$('mode').addEventListener('change', e => changeMode(e.target.value));
+$('viewport').addEventListener('change', e => {
+  viewport = e.target.value;
+  const wide = viewport === 'small';
+  $('screen').classList.toggle('wide', wide);
+  $('face').setAttribute('viewBox', wide ? '0 0 720 540' : '0 0 720 720');
+  $('screen-note').textContent = wide ? '320 × 240 横屏比例预览。' : '720 × 720 方屏比例预览。';
+  choose(selected, customCaption, {immediate: true});
+});
+$('pause').addEventListener('click', () => setPaused(!paused));
+$('replay').addEventListener('click', () => {
+  stopScene(); setPaused(false); choose(selected, null, {replay: true, immediate: true});
+});
+$('symbols').addEventListener('change', e => {effects = e.target.checked; paint();});
+function setReduced(value) {
+  reduced = value; $('reduced').checked = value;
+  choose(selected, customCaption, {immediate: true});
+}
+$('reduced').checked = reduced;
+$('reduced').addEventListener('change', e => setReduced(e.target.checked));
+motionPreference.addEventListener('change', e => setReduced(e.matches));
+$('dnd').addEventListener('change', e => {
+  dnd = e.target.checked;
+  if (selected === 'dnd' && !dnd) choose('idle'); else {updateUI(); paint();}
+});
+Object.keys(scenes).forEach(id => $(`scenario-${id}`).addEventListener('click', () => startScene(id)));
+$('stop-scenario').addEventListener('click', () => {stopScene(); choose('idle');});
+document.addEventListener('visibilitychange', () => {
+  lastFrame = 0;
+  if (document.hidden && raf) {cancelAnimationFrame(raf); raf = 0;} else schedule();
+});
+// Read-only inspection data for design QA; contains no voice or business data.
+window.jarvisDesign=Object.freeze({version:'0.3',sampleTransition:()=>transition.sample(clock),states:Object.freeze(Object.entries(defs).map(([id,d])=>Object.freeze({id,name:d.name,left:d.left,right:d.right,motion:d.motion,effect:d.dec}))),modes:Object.freeze(Object.entries(modes).map(([id,m])=>Object.freeze({id,name:m.name,base:m.base,listening:m.listen,speaking:m.talk}))),geometry:(id,mid)=>Object.freeze(geometry(id,mid)),getSnapshot:()=>Object.freeze({state:selected,mode,paused,reduced,effects,dnd,ageMs:clock-enteredAt,fullScreen:$('face').dataset.fullscreen==='true'}),burstDurationMs:3600,motionSignature:Object.freeze({daily:'elastic-arc',work:'step-and-hold',companion:'squash-spring-hold',english:'alternating-dialogue'}),sampleMotion:(mid,id,side,time)=>Object.freeze(coreMotion(mid,id,side,time))});
+buildCatalog();buildModes();updateUI();paint();schedule();
+})();
+</script></body></html>

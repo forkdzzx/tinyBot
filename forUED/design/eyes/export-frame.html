@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jarvis 眼神帧导出</title>
+<style>
+:root {font: 16px/1.5 system-ui, sans-serif; color: #203641; background: #f6f7f3}
+main {max-width: 44rem; padding: 1.5rem; margin: auto}
+h1 {font-size: 1.55rem} form {display: flex; flex-wrap: wrap; align-items: end; gap: .8rem}
+label {display: grid; gap: .25rem} select, input, button {font: inherit; padding: .4rem}
+input {width: 9rem} button {cursor: pointer}
+#preview {display:block; margin-block: 1.2rem; max-width:100%; height:auto; background:#03070c}
+output {display:block; min-height:1.5rem; margin-top:.6rem}
+</style>
+<main>
+<h1>Jarvis 眼神帧导出</h1>
+<form id="options">
+<label>模式<select id="mode"></select></label>
+<label>眼神<select id="state"></select></label>
+<label>屏幕<select id="size"><option value="small">320 × 240</option><option value="square">720 × 720</option></select></label>
+<label>动画采样时刻（毫秒）<input id="time" type="number" min="0" step="1" placeholder="留空导出静帧"></label>
+<label>文件格式<select id="format"><option value="png">PNG</option><option value="be">RGB565 大端</option><option value="le">RGB565 小端</option><option value="svg">SVG</option></select></label>
+<button id="download" type="submit">保存当前帧</button>
+</form>
+<img id="preview" alt="所选眼神的导出预览">
+<output id="result" aria-live="polite"></output>
+</main>
+<script src="artwork.js"></script>
+<script src="frames.js"></script>
+<script>
+'use strict';
+const {modes, defs} = globalThis.JarvisEyeArtwork;
+const {sizes, renderSVG, rgb565} = globalThis.JarvisEyeFrames;
+const field = id => document.getElementById(id);
+const form = field('options');
+const preview = field('preview');
+const result = field('result');
+for (const [fieldName, values] of [['mode', modes], ['state', defs]]) {
+    for (const [id, entry] of Object.entries(values)) field(fieldName).add(new Option(entry.name, id));
+}
+function selection() {
+    const state = field('state').value;
+    const mode = field('mode').value;
+    const size = field('size').value;
+    const value = field('time').value;
+    const time = value === '' ? null : Number(value);
+    const svg = renderSVG(state, mode, {size, time});
+    const imageURL = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    return {state, mode, size, time, svg, imageURL};
+}
+function updatePreview() {
+    result.textContent = '';
+    if (!form.checkValidity()) return;
+    const {size, imageURL} = selection();
+    preview.width = sizes[size].width;
+    preview.height = sizes[size].height;
+    preview.src = imageURL;
+}
+function toPNG(canvas) {
+    return new Promise((resolve, reject) => canvas.toBlob(blob => {
+        if (blob) resolve(blob);
+        else reject(new Error('PNG 编码失败'));
+    }, 'image/png'));
+}
+async function encode(frame, format) {
+    if (format === 'svg') return new Blob([frame.svg], {type: 'image/svg+xml'});
+    const image = new Image();
+    image.src = frame.imageURL;
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    const {width, height} = sizes[frame.size];
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d', {willReadFrequently: true});
+    context.drawImage(image, 0, 0);
+    if (format === 'png') return toPNG(canvas);
+    const {data} = context.getImageData(0, 0, width, height);
+    return new Blob([rgb565(data, format)], {type: 'application/octet-stream'});
+}
+form.addEventListener('input', updatePreview);
+form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const frame = selection();
+    const format = field('format').value;
+    const button = field('download');
+    button.disabled = true;
+    try {
+        const blob = await encode(frame, format);
+        const {width, height} = sizes[frame.size];
+        const extension = format === 'le' || format === 'be' ? format + '.rgb565' : format;
+        const name = `${frame.mode}-${frame.state}-${width}x${height}-${frame.time ?? 'still'}.${extension}`;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = name;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+        result.textContent = `${name} · ${blob.size.toLocaleString()} 字节`;
+    } catch (error) {
+        result.textContent = '导出失败，' + error.message;
+    } finally {
+        button.disabled = false;
+    }
+});
+updatePreview();
+</script>
+</html>

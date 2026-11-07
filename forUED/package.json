@@ -1,0 +1,9 @@
+{
+  "name": "jarvis-eye-design",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "eyes:preview": "node prototypes/eyes-design/server.mjs"
+  }
+}
