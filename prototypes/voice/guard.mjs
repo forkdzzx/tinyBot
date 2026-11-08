@@ -4,6 +4,14 @@ export class ResponseGuard {
   blocked = new Set();
   pending = false;
   audioStream = null;
+  // Device playout can outlive generation. Only the named, still-active
+  // response may be canceled; its ID remains fenced even without a cloud ACK.
+  interruptResponse(id) {
+    if (typeof id !== 'string' || !id || this.pending || this.active !== id) return false;
+    this.blocked.add(id);
+    this.active = null;
+    return true;
+  }
   interrupt() {
     if(this.active) this.blocked.add(this.active);
     this.active = null;

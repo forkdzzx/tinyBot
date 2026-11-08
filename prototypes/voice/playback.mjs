@@ -1,17 +1,21 @@
 // Cloud synthesis can run faster than playback. Bound memory, not audio lead time.
 export class PCMPlayer {
-  constructor(context,{maxBytes=32*1024*1024}={}) {
+  constructor(context,{maxBytes=32*1024*1024,clock=globalThis}={}) {
     this.context=context;this.maxBytes=maxBytes;
+    this.clock=clock;
     this.sources=new Map();this.nextPlay=0;this.bufferBytes=0;
   }
   get active(){return this.sources.size>0;}
   get queuedSeconds(){return Math.max(0,this.nextPlay-this.context.currentTime);}
   clear(){
-    const previous=[...this.sources.keys()];
+    const previous=[...this.sources];
     this.sources.clear();this.nextPlay=0;this.bufferBytes=0;
-    for(const source of previous){source.onended=null;try{source.stop();}catch{}source.disconnect();}
+    for(const [source,record] of previous){
+      this.clock.clearTimeout(record.timer);
+      source.onended=null;try{source.stop();}catch{}source.disconnect();
+    }
   }
-  enqueue(delta,{onEnded=()=>{}}={}){
+  enqueue(delta,{onStarted,onEnded=()=>{}}={}){
     let raw;
     try{raw=atob(delta);}catch{throw Object.assign(new Error('音频编码无效'),{code:'INVALID_AUDIO_BASE64'});}
     if(raw.length%2)throw Object.assign(new Error('音频字节长度异常'),{code:'MALFORMED_PCM'});
@@ -27,14 +31,31 @@ export class PCMPlayer {
     for(let i=0;i<samples.length;i++)samples[i]=view.getInt16(i*2,true)/32768;
     const source=this.context.createBufferSource();source.buffer=audio;source.connect(this.context.destination);
     const start=Math.max(this.context.currentTime+.025,this.nextPlay);
+    const record={timer:null};
+    const notifyStart=()=>{
+      if(!this.sources.has(source)||!onStarted)return;
+      // Wall time can advance while Safari/Chrome suspend the audio clock.
+      const delayMs=(start-this.context.currentTime)*1000;
+      if(delayMs>0||this.context.state==='suspended'||this.context.state==='interrupted'){
+        record.timer=this.clock.setTimeout(notifyStart,Math.max(10,Math.ceil(delayMs)));
+        return;
+      }
+      onStarted();
+      onStarted=null;
+    };
     source.onended=()=>{
-      if(this.sources.delete(source))this.bufferBytes-=retainedBytes;
+      if(!this.sources.delete(source))return;
+      this.clock.clearTimeout(record.timer);
+      // A short chunk can finish before its JS timer runs on a busy page.
+      onStarted?.();
+      this.bufferBytes-=retainedBytes;
       source.disconnect();
       onEnded();
     };
     try{source.start(start);}catch(error){source.disconnect();throw error;}
-    this.sources.set(source,retainedBytes);this.bufferBytes+=retainedBytes;
+    this.sources.set(source,record);this.bufferBytes+=retainedBytes;
     this.nextPlay=start+audio.duration;
+    if(onStarted)notifyStart();
   }
 }
 
@@ -44,9 +65,19 @@ export class PlaybackReceipts {
   constructor(send){this.send=send;this.streamId=null;this.records=new Map();}
   stream(id){if(!id)return;this.streamId=id;if(!this.records.has(id))this.records.set(id,{pending:0,done:false,reported:false,closed:false});}
   queued(){
-    const id=this.streamId,r=this.records.get(id);if(!r||r.closed)return ()=>{};
-    r.pending++;if(!r.reported){r.reported=true;this.send(id,'started');}
-    return ()=>{if(r.closed)return;r.pending--;this.check(id,r);};
+    const chunk=this.scheduleChunk();
+    chunk.onStarted?.();
+    return chunk.onEnded;
+  }
+  scheduleChunk(id=this.streamId){
+    const r=this.records.get(id);if(!r||r.closed)return {onEnded:()=>{}};
+    const first=!r.scheduled;
+    r.scheduled=true;r.pending++;
+    const onStarted=first?()=>{
+      if(r.closed||r.reported)return;
+      r.reported=true;this.send(id,'started');
+    }:undefined;
+    return {onStarted,onEnded:()=>{if(!r.closed){r.pending--;this.check(id,r);}}};
   }
   finish(id=this.streamId){const r=this.records.get(id);if(r){r.done=true;this.check(id,r);}}
   check(id,r){if(r.done&&r.pending===0&&r.reported&&!r.closed){r.closed=true;this.send(id,'completed');}}

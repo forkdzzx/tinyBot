@@ -55,3 +55,23 @@ test('late completion of cancelled audio cannot end playback or clear a newer re
   assert.equal(g.accept({type:'response.done',response:{id:'old'}}),false);
   assert.equal(g.active,'new');
 });
+
+test('device interrupt targets the still-generating answer even when cloud completion races the request', () => {
+  const guard = new ResponseGuard();
+  const begin = id => guard.accept({type:'response.output_audio.started',response_id:id});
+  const done = id => guard.accept({type:'response.done',response_id:id});
+  begin('already-complete'); done('already-complete');
+  assert.equal(guard.interruptResponse('already-complete'), false);
+  begin('old');
+  assert.equal(guard.interruptResponse('already-complete'), false);
+  assert.equal(guard.active, 'old');
+  assert.equal(guard.interruptResponse('old'), true);
+  assert.equal(guard.pending, false);
+  assert.equal(guard.accept({type:'response.output_audio.delta'}), false);
+  assert.equal(done('old'), false);
+  assert.equal(begin('new'), true); // no cancel ACK required for the scoped stop
+  assert.equal(guard.interruptResponse('old'), false);
+  guard.accept({type:'response.canceled'});
+  assert.equal(guard.active, 'new');
+  assert.equal(guard.accept({type:'response.output_audio.delta'}), true);
+});

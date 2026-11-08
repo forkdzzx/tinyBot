@@ -2,11 +2,15 @@
 <html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Jarvis · 实时语音验证</title>
 <style>
-:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#09111d;color:#e4edf8}body{max-width:850px;margin:28px auto;padding:0 20px}h1{font-size:27px}p{color:#a5bad2;line-height:1.6}.face{height:190px;background:#02060c;border-radius:40px;display:flex;align-items:center;justify-content:center;gap:45px;margin:22px 0}.eye{width:100px;height:60px;background:#52dfef;border-radius:50%;box-shadow:0 0 25px #52dfef44}.face[data-state="idle"] .eye{height:28px}.face[data-state="drowsy"] .eye{height:12px}.face[data-state="speaking"] .eye{animation:talk .5s infinite alternate}.face[data-state="thinking"]{filter:hue-rotate(35deg)}@keyframes talk{to{height:45px}}button{padding:12px 15px;margin:5px 5px 5px 0;background:#193047;color:inherit;border:1px solid #395775;border-radius:9px;font:inherit;cursor:pointer}button:disabled{opacity:.4;cursor:default}.text{padding:12px;background:#132033;border-radius:10px;margin:10px 0;min-height:38px;white-space:pre-wrap;overflow-wrap:anywhere}#events{max-height:150px;overflow:auto;font-size:12px;color:#a5bad2}label{display:block;margin:14px 0}
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#09111d;color:#e4edf8}body{max-width:850px;margin:28px auto;padding:0 20px}h1{font-size:27px}p{color:#a5bad2;line-height:1.6}.face{width:min(100%,400px);aspect-ratio:4/3;position:relative;overflow:hidden;margin:22px auto;background:#020409;border:1px solid #203344;border-radius:24px}.face svg{width:100%;height:100%;display:block}.face .eye-layer{mix-blend-mode:plus-lighter}#face-label{position:absolute;top:5%;right:6%;color:#b3c7d6;font-size:14px}#face-caption{position:absolute;left:6%;right:6%;bottom:7%;max-height:2.7em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-align:center;font-size:clamp(14px,3vw,19px);line-height:1.35;font-weight:550;color:#eef7ff;background:#040911e8;border-radius:6px;overflow-wrap:anywhere}#face-caption:empty{display:none}.face[data-state="off"]{background:#000}button{padding:12px 15px;margin:5px 5px 5px 0;background:#193047;color:inherit;border:1px solid #395775;border-radius:9px;font:inherit;cursor:pointer}button:disabled{opacity:.4;cursor:default}.text{padding:12px;background:#132033;border-radius:10px;margin:10px 0;min-height:38px;white-space:pre-wrap;overflow-wrap:anywhere}#events{max-height:150px;overflow:auto;font-size:12px;color:#a5bad2}label{display:block;margin:14px 0}
 </style>
 <h1>Jarvis · 实时语音验证</h1>
 <p>点击“开始聊天”后连接豆包，看到“可以直接讲话”即可连续交流，无需喊唤醒词或每轮按键。结束后关闭麦克风和云连接，下次再点击开始。只保存文字与事件日志，不保存录音。</p>
-<div class="face" id="face" data-state="idle"><div class="eye"></div><div class="eye"></div></div>
+<div class="face" id="face" data-state="idle" data-mode="daily" role="group" aria-label="Jarvis · 待机">
+  <svg viewBox="0 0 720 540" aria-hidden="true"><defs><filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="8"/></filter></defs><g id="eye-art"></g></svg>
+  <span id="face-label"></span>
+  <div id="face-caption"></div>
+</div>
 <div id="status" role="status">未连接 · 麦克风关闭</div>
 <p id="mode" aria-live="polite">当前模式：连接后显示</p>
 <p id="learning" aria-live="polite"></p>
@@ -19,4 +23,6 @@
 <div>你说的</div><div class="text" id="user"></div>
 <div>Jarvis</div><div class="text" id="assistant"></div>
 <div id="metrics"></div><pre id="events"></pre>
+<script src="/eyes/artwork.js"></script>
+<script src="/eyes/transitions.js"></script>
 <script type="module" src="/client.mjs"></script></html>

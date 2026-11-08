@@ -3,6 +3,8 @@
 个人桌面机器人。PRD 已于 **2026-10-23** 确认，三个月交付目标为 **2027-01-23**。当前阶段为 P1 可行性验证。
 
 - **[当前工作清单：已完成、待办与协作节点](docs/work-checklist.md)**
+- **[Mac 真人麦克风与眼神短测](docs/voice-face-short-test.md)** · [模拟 K151 问答、插话与回声测试记录](docs/k151-mac-preflight.md)
+- **[眼神交互设计 v0.3 总索引](forUED/README.md)** · [离线交互预览](forUED/prototypes/eyes-design/index.html) · [开发交付包](forUED/output/jarvis-eyes-v0.3.zip)。设计资料归档在 `forUED/`，开发与验收进度看上方主清单。
 - [PRD v1.1](prd/prd-v1.1.md)
 - [完整计划](prd/project-plan-v1.md)
 - [V2 迭代优化备忘录](prd/v2-iteration-memo.md)

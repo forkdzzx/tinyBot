@@ -5,7 +5,7 @@ import WebSocket, { WebSocketServer } from 'ws';
 import { DeviceSession } from './session.mjs';
 
 // A temporary loopback bench for the paired-device protocol. No cloud or OS controls.
-export async function openDeviceBench({ onSession, onMicrophone, ackTimeoutMs } = {}) {
+export async function openDeviceBench({ onSession, onMicrophone, onPlayback, onDisconnect, ackTimeoutMs } = {}) {
   const pairingKey = randomBytes(32).toString('hex');
   const expected = Buffer.from(`Bearer ${pairingKey}`);
   const httpServer = http.createServer((req, res) => res.writeHead(404).end());
@@ -28,6 +28,7 @@ export async function openDeviceBench({ onSession, onMicrophone, ackTimeoutMs } 
     const session = new DeviceSession({
       ackTimeoutMs,
       onMicrophone,
+      onPlayback,
       send(message) {
         if (socket.readyState !== WebSocket.OPEN || socket.bufferedAmount > 32 * 1024) {
           socket.terminate();
@@ -37,6 +38,7 @@ export async function openDeviceBench({ onSession, onMicrophone, ackTimeoutMs } 
       },
       onClose(reason) {
         if (socket.readyState === WebSocket.OPEN) socket.close(1008, reason);
+        onDisconnect?.(session, reason);
       },
     });
     socket.on('message', (raw, binary) => {

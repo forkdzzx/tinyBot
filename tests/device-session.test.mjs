@@ -176,3 +176,25 @@ test('transport send failure and input sink failure dispose the connection', () 
   assert.equal(b.frame(b.device.openInput(), 0), false);
   assert.deepEqual(b.closed, ['microphone_sink_error']);
 });
+
+test('start-of-playback receipts require an emitted frame and one current live turn', () => {
+  const receipts = [];
+  const f = fixture({ onPlayback: (...args) => receipts.push(args) });
+  f.ready();
+  const first = f.device.startTurn();
+  const ack = type => f.receive({ type, turnId: first });
+  assert.equal(ack('started'), false);
+  f.device.play(speaker, first);
+  assert.equal(ack('started'), true);
+  assert.equal(ack('started'), false);
+  f.device.cancel(first);
+  assert.equal(ack('started'), false);
+  assert.equal(ack('stopped'), true);
+  const second = f.device.startTurn();
+  f.device.play(speaker, second);
+  f.device.endTurn(second);
+  assert.equal(ack('started'), false);
+  assert.equal(f.receive({ type: 'started', turnId: second }), true);
+  assert.equal(f.receive({ type: 'played', turnId: second }), true);
+  assert.deepEqual(receipts, [['started', first], ['stopped', first], ['started', second], ['played', second]]);
+});

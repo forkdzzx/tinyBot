@@ -25,11 +25,12 @@ export class DeviceSession {
   #send;
   #onMicrophone;
   #onClose;
+  #onPlayback;
   #setTimer;
   #clearTimer;
   #ackTimeoutMs;
 
-  constructor({ send, onMicrophone = () => {}, onClose = () => {},
+  constructor({ send, onMicrophone = () => {}, onPlayback = () => {}, onClose = () => {},
     setTimer = setTimeout, clearTimer = clearTimeout, ackTimeoutMs = 5000 } = {}) {
     if (typeof send !== 'function') throw new TypeError('DeviceSession needs a send function');
     if (!Number.isSafeInteger(ackTimeoutMs) || ackTimeoutMs <= 0) {
@@ -38,6 +39,7 @@ export class DeviceSession {
     this.#send = send;
     this.#onMicrophone = onMicrophone;
     this.#onClose = onClose;
+    this.#onPlayback = onPlayback;
     this.#setTimer = setTimer;
     this.#clearTimer = clearTimer;
     this.#ackTimeoutMs = ackTimeoutMs;
@@ -45,6 +47,7 @@ export class DeviceSession {
   }
 
   get sessionId() { return this.#sessionId; }
+  get ready() { return this.#ready && !this.#closed; }
   get closed() { return this.#closed; }
 
   receive(message) {
@@ -61,12 +64,20 @@ export class DeviceSession {
     switch (message.type) {
       case 'mic':
         return this.#receiveMic(message);
+      case 'started': {
+        const turn = this.#turn;
+        if (!turn || turn.id !== message.turnId || !turn.nextSeq || turn.started || turn.phase === 'canceling') return false;
+        turn.started = true;
+        this.#onPlayback('started', turn.id);
+        return true;
+      }
       case 'played':
       case 'stopped': {
         const expected = message.type === 'played' ? 'draining' : 'canceling';
         if (this.#turn?.phase !== expected || this.#turn.id !== message.turnId) return false;
         this.#clearDeadline();
         this.#turn = null;
+        this.#onPlayback(message.type, message.turnId);
         return true;
       }
       default:
@@ -107,7 +118,7 @@ export class DeviceSession {
   startTurn() {
     if (!this.#ready || this.#closed || this.#turn) return null;
     const id = ++this.#lastTurn;
-    this.#turn = { id, phase: 'speaking', nextSeq: 0 };
+    this.#turn = { id, phase: 'speaking', started: false, nextSeq: 0 };
     return this.#emit({ type: 'turn', turnId: id }) ? id : null;
   }
 

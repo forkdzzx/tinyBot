@@ -1,7 +1,9 @@
 import { PCMPlayer,PlaybackReceipts } from './playback.mjs';
 import { SessionLifecycle } from './lifecycle.mjs';
 import { TurnTiming } from './timing.mjs';
-const CLIENT_BUILD='voice-learning-20261101';
+import { VoicePresentation } from './presentation.mjs';
+import { attachFaceView } from './face-view.mjs';
+const CLIENT_BUILD='voice-eyes-v03-20261108';
 const el=id=>document.getElementById(id);
 let socket,wakeSocket,stream,inputContext,outputContext,capture,player;
 let generation=0,voiceGeneration=0,phase='disabled',ready=false,diagnostic=false;
@@ -10,7 +12,22 @@ let inputState={active:false,stalled:false,commitRequested:false,turn:0};
 let pendingAudio=false,userText='',assistantText='',asrEnded=null,firstAudio=true;
 let volumeFrames=0,lastBarge=0,prebuffer=[],captureActive=false;
 let connectTimeout,playbackTimer,closeTimer,heartbeat,drowsyTimer,audioPump;
-const playbackReceipts=new PlaybackReceipts((id,state)=>send({type:'playback',response_id:id,state}));
+const renderFace=attachFaceView(el('face'),el('eye-art'),el('face-caption'));
+let lastFace;
+function present(snapshot,options) {
+  renderFace(snapshot,options);
+  if (!lastFace || lastFace.state !== snapshot.state || lastFace.mode !== snapshot.mode ||
+      lastFace.responseId !== snapshot.responseId || options.interrupt) {
+    send({type:'face_state',state:snapshot.state,mode:snapshot.mode,response_id:snapshot.responseId??undefined});
+  }
+  lastFace=snapshot;
+}
+let presentation=new VoicePresentation(present);
+const playbackReceipts=new PlaybackReceipts((id,state)=>{
+  send({type:'playback',response_id:id,state});
+  if(state==='started'){lifecycle.outputStarted();presentation.onset(id);}
+  else if(state==='completed')presentation.ended(id);
+});
 const turnTiming=new TurnTiming();
 function reportTiming(event){
   if(event)send({type:'timing',captureQueueMs:prebuffer.length*20,playbackQueueMs:(player?.queuedSeconds||0)*1000,
@@ -18,7 +35,7 @@ function reportTiming(event){
 }
 const lifecycle=new SessionLifecycle(reason=>endChat(reason==='wait_timeout'?'思考等待到期':'本次会话已结束'));
 const status=text=>{el('status').textContent=text;};
-const face=state=>{el('face').dataset.state=state;};
+const face=state=>presentation.setPhase(state);
 function log(type){el('events').textContent=`${new Date().toLocaleTimeString()} ${type}\n`+el('events').textContent.slice(0,6000);}
 function send(e){if(socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify(e));}
 function wakeSend(e){if(wakeSocket?.readyState===WebSocket.OPEN)wakeSocket.send(JSON.stringify(e));}
@@ -33,7 +50,7 @@ function clearAudio(){playbackReceipts.interrupt();player?.clear();clearTimeout(
 function barge(){
   if(!ready)return;
   clearAudio();pendingAudio=true;assistantText='';el('assistant').textContent='';
-  lastBarge=performance.now();lifecycle.interrupted();face('listening');send({type:'interrupt'});
+  lastBarge=performance.now();lifecycle.interrupted();presentation.interrupt();send({type:'interrupt'});
 }
 function resetInput(){inputState={active:false,stalled:false,commitRequested:false,turn:0};el('input-help').textContent='';buttons();}
 function releaseAudio(){
@@ -42,7 +59,7 @@ function releaseAudio(){
   inputContext?.close().catch(()=>{});inputContext=null;
   clearAudio();player=null;outputContext?.close().catch(()=>{});outputContext=null;
 }
-function disable(message='交互已关闭 · 麦克风关闭'){
+function disable(message='交互已关闭 · 麦克风关闭',restingFace='off'){
   generation++;voiceGeneration++;phase='disabled';ready=false;captureActive=false;prebuffer=[];
   resetInput();lifecycle.dispose();clearTimeout(connectTimeout);clearTimeout(closeTimer);clearTimeout(drowsyTimer);clearInterval(heartbeat);clearInterval(audioPump);
   clearAudio();
@@ -50,12 +67,12 @@ function disable(message='交互已关闭 · 麦克风关闭'){
   const old=socket;socket=null;
   if(old){old.onmessage=null;old.onclose=null;old.onerror=null;old.onopen=null;old.close();}
   if(wakeSocket){wakeSocket.onmessage=null;wakeSocket.onerror=null;wakeSocket.onclose=null;wakeSocket.close();wakeSocket=null;}
-  releaseAudio();face('idle');status(message);buttons();
+  releaseAudio();face(restingFace);status(message);buttons();
   el('wake-input').textContent='';
 }
 function standby(message=''){
   lifecycle.dispose();ready=false;prebuffer=[];clearAudio();pendingAudio=false;
-  if(!wakeSocket)return disable(`${message||'本次会话已结束'} · 麦克风关闭，可点击开始聊天`);
+  if(!wakeSocket)return disable(`${message||'本次会话已结束'} · 麦克风关闭，可点击开始聊天`,'idle');
   phase='arming';buttons();face('idle');status(`${message?message+' · ':''}正在恢复本地唤醒`);
   wakeSend({type:'listen'});
 }
@@ -72,10 +89,12 @@ function endChat(message='本次会话已结束'){
   old.onclose=()=>{if(socket===old)finishChat(message);};
   closeTimer=setTimeout(()=>{if(socket===old)old.close();},3000);
 }
-function play(delta){
+function play(delta,responseId){
   if(pendingAudio||lifecycle.phase==='waiting'||!outputContext||typeof delta!=='string')return;
   const playbackQueueMs=player.queuedSeconds*1000;
-  player.enqueue(delta,{onEnded:playbackReceipts.queued()});lifecycle.outputStarted();face('speaking');
+  const id=responseId||playbackReceipts.streamId;
+  if(!id||id!==playbackReceipts.streamId||!delta)return;
+  player.enqueue(delta,playbackReceipts.scheduleChunk(id));
   const timing=turnTiming.firstAudio(performance.now());if(timing)reportTiming({...timing,playbackQueueMs});
   if(firstAudio){firstAudio=false;if(asrEnded!==null)el('metrics').textContent=`识别结束至首音频排程约 ${Math.round(performance.now()-asrEnded)} ms（非端到端验收延迟）`;}
 }
@@ -84,7 +103,6 @@ function playbackFinished(){
   // AudioBufferSource.onended is authoritative: generation can finish far ahead of playback.
   if(player?.active){playbackTimer=setTimeout(playbackFinished,50);return;}
   lifecycle.playbackEnded();
-  if(lifecycle.phase!=='waiting')face('listening');
   if(diagnostic&&!captureActive)endChat('问候测试完成 · 麦克风未开启');
 }
 function beginCloud(ticket=null){
@@ -92,8 +110,12 @@ function beginCloud(ticket=null){
   clearTimeout(drowsyTimer);phase='connecting';ready=false;prebuffer=[];pendingAudio=false;
   userText='';assistantText='';asrEnded=null;firstAudio=true;
   turnTiming.reset();
+  const mode=presentation.snapshot.mode;
+  presentation.dispose();
+  presentation=new VoicePresentation(present);
+  presentation.accept({type:'local.mode_state',id:mode});
   el('user').textContent='';el('assistant').textContent='';el('metrics').textContent='';
-  wakeSend({type:'pause'});status(wakeSocket?'实验唤醒成功 · 连接豆包中':'连接豆包中 · 请稍候');face('thinking');buttons();
+  wakeSend({type:'pause'});status(wakeSocket?'实验唤醒成功 · 连接豆包中':'连接豆包中 · 请稍候');face('connecting');buttons();
   const run=++voiceGeneration;
   socket=new WebSocket(`ws://${location.host}/voice`);
   connectTimeout=setTimeout(()=>endChat('云端连接超时'),22000);
@@ -110,7 +132,7 @@ function beginCloud(ticket=null){
       const e=JSON.parse(data);eventType=e.type;
       if(e.type!=='response.output_audio.delta')log(e.type);
       if(e.type==='local.learning_state'){el('learning').textContent=`学习记录：已整理 ${e.segmentCount} 段、练习 ${e.userTurnCount} 轮${e.pendingCount?' · 还有记录在整理':''}${e.failedCount?' · 有记录整理失败，文字历史已保留':''}${e.lastVocabulary?.length?' · 最近接触：'+e.lastVocabulary.map(w=>w.word).join('、'):''}（不代表掌握程度）`;return;}
-      if(e.type==='local.mode_state'){el('mode').textContent=`当前模式：${e.name}${e.autoLocked?' · 本次不自动切换':''}${e.announcement?' · '+e.announcement:''}`;return;}
+      if(e.type==='local.mode_state'){if(phase!=='ending')presentation.accept(e);el('mode').textContent=`当前模式：${e.name}${e.autoLocked?' · 本次不自动切换':''}${e.announcement?' · '+e.announcement:''}`;return;}
       if(e.type==='local.input_state'){
         if(phase==='ending')return;inputState=e;buttons();
         el('input-help').textContent=e.active?(e.commitRequested?'正在结束这句的识别，请稍候……':e.stalled?'这句话还没有识别完成。若已说完，可点“我说完了”；如果还在想，可以继续等。':''):'';return;
@@ -118,8 +140,10 @@ function beginCloud(ticket=null){
       if(e.type==='local.closed'){socket.close();return;}
       if(e.type==='local.error'){endChat(e.message);return;}
       if(phase==='ending')return;
+      if(e.type==='local.ready'&&!captureActive)presentation.setPhase('thinking');
+      else if(!pendingAudio||!e.type.startsWith('response.output_'))presentation.accept(e);
       if(e.type==='local.ready'){
-        clearTimeout(connectTimeout);ready=true;phase='chat';lifecycle.ready();buttons();face('listening');
+        clearTimeout(connectTimeout);ready=true;phase='chat';lifecycle.ready();buttons();
         status(captureActive?'会话中 · 可以直接讲话':'问候测试 · 麦克风关闭');
         send({type:captureActive?'unmute':'greeting'});
         // Drain post-wake connection buffering at at most 2x realtime, rather than
@@ -131,12 +155,12 @@ function beginCloud(ticket=null){
         },10);
       }else if(e.type==='local.end'){endChat('按语音要求结束聊天');}
       else if(e.type==='local.memory_result'){
-        clearAudio();pendingAudio=false;assistantText='';el('assistant').textContent='';face('thinking');
+        clearAudio();pendingAudio=false;assistantText='';el('assistant').textContent='';
       }else if(e.type==='local.memory_speech_failed'){
-        clearAudio();lifecycle.interrupted();face('listening');
+        clearAudio();lifecycle.interrupted();
       }
       else if(e.type==='local.waiting'){
-        lifecycle.inputCompleted('等一下，我想想');clearAudio();pendingAudio=true;face('listening');
+        lifecycle.inputCompleted('等一下，我想想');clearAudio();pendingAudio=true;
         status('安静等待 · 最多 10 分钟，你开口后继续');
       }else if(e.type==='local.notice')status(e.message);
       else if(e.type==='local.interrupted'){clearAudio();pendingAudio=true;assistantText='';el('assistant').textContent='';lifecycle.interrupted();}
@@ -144,21 +168,20 @@ function beginCloud(ticket=null){
       else if(e.type==='local.user_started'){
         turnTiming.userStarted(performance.now());
         clearAudio();lifecycle.userStarted();pendingAudio=false;userText='';assistantText='';firstAudio=true;
-        status('会话中 · 正在听');face('listening');el('user').textContent='';el('assistant').textContent='';
+        status('会话中 · 麦克风已开启');el('user').textContent='';el('assistant').textContent='';
       }else if(e.type==='conversation.item.input_audio_transcription.delta'){
         userText=e.delta||e.text||'';el('user').textContent=userText;
       }else if(e.type==='conversation.item.input_audio_transcription.completed'){
         const text=e.transcript||e.text||userText;el('user').textContent=text;
         const command=lifecycle.inputCompleted(text);asrEnded=performance.now();
         reportTiming(turnTiming.inputCompleted(asrEnded));
-        if(command==='wait'){clearAudio();face('listening');status('安静等待 · 最多 10 分钟，你开口后继续');}
-        else if(!command)face('thinking');
+        if(command==='wait'){clearAudio();face('waiting');status('安静等待 · 最多 10 分钟，你开口后继续');}
       }else if(e.type==='response.output_text.delta'&&!pendingAudio&&lifecycle.phase!=='waiting'){
         assistantText+=e.delta||e.text||'';el('assistant').textContent=assistantText;
       }else if(e.type==='response.output_text.done'&&!pendingAudio&&lifecycle.phase!=='waiting'){
         el('assistant').textContent=e.text||assistantText;
-      }else if(e.type==='response.output_audio.started')playbackReceipts.stream(e.response_id);
-      else if(e.type==='response.output_audio.delta')play(e.delta);
+      }else if(e.type==='response.output_audio.started'&&!pendingAudio)playbackReceipts.stream(e.response_id);
+      else if(e.type==='response.output_audio.delta')play(e.delta,e.response_id);
       else if(e.type==='response.output_audio.done'){playbackReceipts.finish(e.response_id);playbackFinished();}
     }catch(error){
       const code=error.code||error.name||'EVENT_ERROR';
@@ -227,7 +250,7 @@ async function enable(withMic=true,withWake=true,onlyWake=false){
         }
         else if(e.type==='wake.listening'){
           phase='standby';status(wakeOnly?'仅测试 Hi Jarvis · 不连接云端':'实验待机 · 说 Hi Jarvis 唤醒 · 声音不上传云端');face('idle');buttons();
-          clearTimeout(drowsyTimer);drowsyTimer=setTimeout(()=>{if(phase==='standby')face('drowsy');},300000);
+          clearTimeout(drowsyTimer);drowsyTimer=setTimeout(()=>{if(phase==='standby')face('sleepy');},300000);
         }else if(e.type==='wake.detected'&&phase==='standby'){
           log(`识别到：${e.phrase}`);
           if(wakeOnly){phase='arming';wakeSend({type:'listen'});}else beginCloud(e.ticket);

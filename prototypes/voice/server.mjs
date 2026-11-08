@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { mkdirSync, appendFileSync } from 'node:fs';
 import { randomUUID, createHash } from 'node:crypto';
 import {fileURLToPath,pathToFileURL} from 'node:url';
+import {join} from 'node:path';
 import WebSocket, { WebSocketServer } from 'ws';
 import { ENDPOINT, loadConfig, sessionCreate, ACTIVE_PROMPT_ID } from './config.mjs';
 import {InputRecovery} from './input-recovery.mjs';
@@ -22,28 +23,31 @@ import {practiceEnd} from '../learning/intents.mjs';
 import {ModeController,loadSkills} from '../modes/controller.mjs';
 import {ModeTools,modeSessionRequest,modeContextMessage,MODE_PROMPT_ID} from '../modes/tools.mjs';
 
-export function createVoiceServer({config,endpoint=ENDPOINT,port=8766,memoryRoot=fileURLToPath(new URL('../../runtime/data/',import.meta.url)),withWake=true,extract,speak=streamMemorySpeech,memorySandbox=false,skillsRoot,extractPractice,learningWaitMs=8000}={}){
+export function createVoiceServer({config,endpoint=ENDPOINT,port=8766,memoryRoot=fileURLToPath(new URL('../../runtime/data/',import.meta.url)),logRoot=fileURLToPath(new URL('../../runtime/voice/',import.meta.url)),withWake=true,extract,speak=streamMemorySpeech,memorySandbox=false,skillsRoot,extractPractice,learningWaitMs=8000}={}){
 const modes=new ModeController(loadSkills(skillsRoot));
 let store,worker,learningArchive,learningWorker;
 function initializeMemory(){
 store=new MemoryStore(memoryRoot);
 worker=new MemoryWorker(store,{...(extract?{extract}:{}),onStatus:e=>{
-  try{appendFileSync(new URL('../../runtime/voice/memory-worker.jsonl',import.meta.url),JSON.stringify({at:new Date().toISOString(),...e})+'\n',{mode:0o600});}catch{}
+  try{appendFileSync(join(logRoot,'memory-worker.jsonl'),JSON.stringify({at:new Date().toISOString(),...e})+'\n',{mode:0o600});}catch{}
 }});
 learningArchive=new LearningArchive(memoryRoot);recoverPractice(store,learningArchive);
 learningWorker=new LearningWorker(learningArchive,{...(extractPractice?{extract:extractPractice}:{}),onStatus:e=>{
-  try{appendFileSync(new URL('../../runtime/voice/learning-worker.jsonl',import.meta.url),JSON.stringify({at:new Date().toISOString(),...e})+'\n',{mode:0o600});}catch{}
+  try{appendFileSync(join(logRoot,'learning-worker.jsonl'),JSON.stringify({at:new Date().toISOString(),...e})+'\n',{mode:0o600});}catch{}
   for(const client of wss.clients)if(client.readyState===WebSocket.OPEN)client.send(JSON.stringify(learningState()));
 }});worker.start();learningWorker.start();
 }
 function learningState(){return {type:'local.learning_state',...learningContext(learningArchive),pendingCount:learningArchive.state.segments.filter(s=>['queued','running'].includes(s.status)).length,failedCount:learningArchive.state.segments.filter(s=>s.status==='failed').length};}
-const host = `127.0.0.1:${port}`;
-const origin = `http://${host}`;
+let host, origin; // Assigned after listen so isolated tests can request an ephemeral port.
 const files = new Map([
   ['/', ['index.html','text/html; charset=utf-8']],
   ['/client.mjs',['client.mjs','text/javascript; charset=utf-8']],
   ['/capture.mjs',['capture.mjs','text/javascript; charset=utf-8']],
   ['/playback.mjs',['playback.mjs','text/javascript; charset=utf-8']],
+  ['/presentation.mjs',['presentation.mjs','text/javascript; charset=utf-8']],
+  ['/face-view.mjs',['face-view.mjs','text/javascript; charset=utf-8']],
+  ['/eyes/artwork.js',['../../forUED/design/eyes/artwork.js','text/javascript; charset=utf-8']],
+  ['/eyes/transitions.js',['../../forUED/design/eyes/transitions.js','text/javascript; charset=utf-8']],
   ['/lifecycle.mjs',['lifecycle.mjs','text/javascript; charset=utf-8']],
   ['/intent-text.mjs',['intent-text.mjs','text/javascript; charset=utf-8']],
   ['/timing.mjs',['timing.mjs','text/javascript; charset=utf-8']],
@@ -73,9 +77,10 @@ server.on('upgrade',(req,socket,head)=> {
   }
   target.handleUpgrade(req,socket,head,client=>target.emit('connection',client));
 });
-mkdirSync(new URL('../../runtime/voice',import.meta.url),{recursive:true,mode:0o700});
+mkdirSync(logRoot,{recursive:true,mode:0o700});
 wss.on('connection',client=> {
-  const logPath=new URL(`../../runtime/voice/${Date.now()}-${randomUUID()}.jsonl`,import.meta.url);
+  const logPath=join(logRoot,`${Date.now()}-${randomUUID()}.jsonl`);
+  let previousFace;
   let upstream=null, ready=false, closing=false, audioFrames=0;
   let creationTimer, closeTimer, cancelTimer;
   let paused=false, lastHeartbeat=Date.now();
@@ -201,6 +206,14 @@ wss.on('connection',client=> {
     if(closing) return;
     if(e.type==='timing'){
       const entry=timingDiagnostic(e);if(ready&&entry)log(entry);return;
+    }
+    if(e.type==='face_state'){
+      if(!ready || !['idle','connecting','listening','thinking','speaking','waiting','sleepy','off','offline'].includes(e.state) ||
+        !['daily','work','english','companion'].includes(e.mode))return;
+      const id=typeof e.response_id==='string'&&/^[\w.-]{1,100}$/.test(e.response_id)?e.response_id:null;
+      const key=JSON.stringify([e.state,e.mode,id]);
+      if(key!==previousFace){previousFace=key;log({type:'local.face_state',state:e.state,mode:e.mode,response_id:id});}
+      return;
     }
     if(e.type==='playback'){
       try{if(typeof e.response_id==='string'&&e.response_id.length<=100)history?.playback(e.response_id,e.state);}
@@ -357,6 +370,14 @@ wss.on('connection',client=> {
       else if(e.type==='mute') cloud({type:'input_audio_mute.commit'});
       else if(e.type==='finish_input')inputRecovery.finish(e.turn);
       else if(e.type==='interrupt'){try{
+        if(e.response_id!==undefined){
+          if(guard.interruptResponse(e.response_id)){
+            history?.playback(e.response_id,'interrupted');
+            cloud({type:'response.cancel'});
+            log({type:'local.device_interrupt',response_id:e.response_id});
+          }
+          return;
+        }
         turnRevision++; // Also invalidate a summary still waiting for extraction.
         cancelModeNotice();
         memorySpeechAbort?.abort();clearTimeout(memoryFeedbackTimer);contextFeedback=null;
@@ -377,7 +398,10 @@ return {server,modes,get learningArchive(){return learningArchive;},get learning
   // Own the listening port before recovering files; a second startup must not
   // mark the first process's still-active conversations as interrupted.
   const failed=e=>reject(e);server.once('error',failed);
-  server.listen(port,'127.0.0.1',()=>{server.off('error',failed);try{initializeMemory();resolve(origin);}catch(error){worker?.stop();learningWorker?.stop();server.close();reject(error);}});
+  server.listen(port,'127.0.0.1',()=>{
+    server.off('error',failed);host=`127.0.0.1:${server.address().port}`;origin=`http://${host}`;
+    try{initializeMemory();resolve(origin);}catch(error){worker?.stop();learningWorker?.stop();server.close();reject(error);}
+  });
 });},close(){
   worker?.stop();learningWorker?.stop();for(const ws of [wss,wakeWss])for(const c of ws.clients)c.close();server.close();
 }};
