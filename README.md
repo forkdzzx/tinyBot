@@ -8,9 +8,15 @@
 - [V2 迭代优化备忘录](prd/v2-iteration-memo.md)
 - [日期、任务与实测状态](docs/project-status.md)
 - [首轮技术验证方案](docs/p1-feasibility.md)
+- **[A2 硬件选型交付书与分批采购清单](forProject/A2-硬件选型交付书.md)** · [主负责 AI 接手指南](forProject/00-主负责AI接手指南.md)
 - [Stack-chan 成品与自建路线初评](prd/stackchan-review.md)
-- [最新硬件路线、完整预算与证据](docs/hardware-route-review-2026-11-01.md)
-- [硬件台架与电源验证计划](docs/hardware-bench-plan.md)
+- [11-01 原四条硬件路线与预算](docs/hardware-route-review-2026-11-01.md)
+- [B-L 历史台架与电源计划](docs/hardware-bench-plan.md)
+- [B-L 开发、装配与验收工作量明细（选型估算）](forProject/docs/bl-work-breakdown-2026-11-02.md)
+- [新增硬件路线：成品、开源终端与集成板比较（2026-11-05）](forProject/docs/hardware-alternatives-review-2026-11-05.md)
+- [逐型号硬件与软件实施任务、个人投入和验收条件](forProject/docs/hardware-implementation-checklist-2026-11-08.md)
+- [11-07 选型比较（阅读版）](forProject/docs/hardware-options-and-shopping-list-2026-11-07.html) · [Markdown](forProject/docs/hardware-options-and-shopping-list-2026-11-07.md)
+- [11-05 原十条路线的零件级清单（阅读版）](forProject/docs/hardware-options-comparison-and-shopping-list-2026-11-05.html) · [Markdown源文档](forProject/docs/hardware-options-comparison-and-shopping-list-2026-11-05.md)
 - [火山引擎开通与接入准备](docs/volcengine-setup.md)
 - [固定语音评估与架构比较](docs/voice-evaluation-2026-10-24.md)
 - [方舟文本对照实测结果（2026-10-25）](docs/voice-comparison-2026-10-25.md)
@@ -70,7 +76,7 @@ npm test
 | `demo/ElectronBot-main/` | 用户下载的参考作品，优先本地阅读 |
 | `runtime/` | 后续本地配置、日志与历史；不进入版本控制 |
 
-原型使用 JavaScript 是为了复用现有 Node 环境并快速显示眼睛，不锁定最终机器人编程语言。Seeduplex 已接通真人麦克风，基本插话此前获得用户确认；v3 真人短测确认复述、英文跟随和能力边界符合，整体体验改善。深度语义可靠性、量化延迟与长期稳定性仍待验证，机器人音频驱动和主控尚未定型。
+原型使用 JavaScript 是为了复用现有 Node 环境并快速显示眼睛，不锁定最终机器人编程语言。Seeduplex 已接通真人麦克风，基本插话此前获得用户确认；v3 真人短测确认复述、英文跟随和能力边界符合，整体体验改善。深度语义可靠性、量化延迟与长期稳定性仍待验证，K151 实机音频和日用 Linux 主机仍待联调。
 
 ## Mac 真实语音验证
 
@@ -102,4 +108,4 @@ npm run voice:probe -- --loopback
 
 最新[英语真人反馈](docs/learning-feedback-2026-11-01.md)：用户感觉基本合适，确认 weekend、wine 和结束话转写错误；英文练习请求未切换本地模式，现补有限明确英文入口。187 项检查及真实转写的本地流程回放通过，识别错误本身未修复。本轮后半段后台归档完成，口头总结与跨会话读取仍待验证；暂不要求重复测试。
 
-硬件准备已更新：[最新比较](docs/hardware-route-review-2026-11-01.md)建议优先B-L验证，预算分配4565元；A2约3390–3790元，但现有社区USB桥半双工且新屏适配未验证；B-J约6739元超本期预算。[电源与台架计划](docs/hardware-bench-plan.md)列明待实测门槛。路线尚未选择、器件未购买，所有占位须采购前核到手价。
+V1 采用 A2。K151 标准机身负责收音、播放、显示和运动，先与现有 Mac 联调，日用迁移到独立 Linux 主机。已完成本机配对协议模拟与固件回刷指南，复现命令为 `npm run device:preflight`。到货后优先测 20、50 厘米自然插话与墙充常插时的同键关机再开。[Mac 协议复现](docs/k151-mac-preflight.md) · [固件回刷准备](docs/k151-firmware-recovery.md)

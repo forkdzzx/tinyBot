@@ -1,8 +1,16 @@
 # Jarvis 硬件路线、完整预算与验证顺序
 
+> 11-07 当前选型见[整机交付与全部方案购买清单](../forProject/docs/hardware-options-and-shopping-list-2026-11-07.html)。下文预算与优先级为此前各日期的记录。
+
 核查日期：**2026-11-01（Asia/Shanghai）**。对应 T-42～T-46，并补充 T-48 布局准备。本文是候选方案和采购前依据，**尚未选择最终路线、购买器件、编译成品固件或完成实机验证**。PRD 的 5000 元整机预算、直接插话、双关节、单按钮电源循环和未来 NVIDIA 扩展要求不变。
 
+2026-11-02 补充：[B-L 工作量明细](../forProject/docs/bl-work-breakdown-2026-11-02.md)区分本体集成、共用软件收尾与验收，列出开发内容、投入和用户配合；仍为选型讨论，未确定采用 B-L。A2 的半双工结论限定于已核查的社区桥接版本，不代表 K151 硬件无法实现同时收放；B-L 也没有实机通过证据。
+
+**2026-11-05 后续调查：** [新增候选比较](../forProject/docs/hardware-alternatives-review-2026-11-05.md)已扩展到K151独立音频组合、OpenDeskBot、Whisplay、VerdiBot、Reachy Mini与小木编程版。下文“B-L优先”是11-01在原四条路线内的建议；当时建议先补C1/C2的接口与可复制性证据，再与B-L比较。Reachy在接受无脸屏时值得重点评估。新候选尚无我们的硬件验收，不与B-L视作同等成熟，也未替换PRD需求。
+
 ## 1. 建议与选择
+
+阅读全部候选及各自购买项，请使用[11-05统一比较与清单](../forProject/docs/hardware-options-comparison-and-shopping-list-2026-11-05.md)（[排版阅读版](../forProject/docs/hardware-options-comparison-and-shopping-list-2026-11-05.html)）。本页保留11-01价格快照；后续核到XVF3800单件挂牌US$60.99，原US$54.90不能作为当前报价。
 
 **建议优先验证 B-L：Raspberry Pi 5 4GB＋USB 回声处理音频前端＋现成两轴器件，未来通过有线网络增加独立 Jetson 节点。** 可以沿用现有会话、记忆和 Skill 程序，把新增工作集中到 Linux 音频、显示、电源和动作适配。它仍需要机械装配，但不需要从零设计主板、声卡和舵机。
 

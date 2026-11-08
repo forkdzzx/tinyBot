@@ -113,8 +113,8 @@
 | K151用microSD | 0–1 | 固件资源/本体日志 | 条件另购；Linux已有持久化，不应误认两张卡均必需 | [终端SD接口](https://docs.m5stack.com/en/StackChan) | 旧预算保留80元，确认不需后再扣减 |
 | K151 USB供电适配器 | 1 | 机器人本体及动作供电 | 另购／型号待定；不默认Pi USB口足够供整机峰值 | [供电接口](https://docs.m5stack.com/en/StackChan) | 旧分配70元 |
 | 主机↔K151 USB-A→C数据线 | 1 | 候选音频/控制连接及刷写 | K151已含50cm线；采用局域网桥则用于维护 | [装箱清单](https://shop.m5stack.com/products/stackchan-kawaii-co-created-open-source-ai-desktop-robot) | 0新增；延长/替换线计线材包 |
-| 独立供电与数据连接所需分配/防回供件 | 0–1套，依最终拓扑 | 避免把双供电或USB连接当作自然兼容 | 型号待定，可能需改造；**不得直接并接两个USB电源** | [K151电路](https://docs.m5stack.com/en/StackChan)、[台架电源方案](hardware-bench-plan.md) | 旧按键电源200元仅为总占位，是否足够未定 |
-| 电源/聊天按钮、信号线与双设备电源适配 | 2个功能入口＋适配1套 | 指定交互及保存关机循环 | 需改造；Pi J2仅解决Pi一侧，未解决K151同步 | [Pi规格](https://www.raspberrypi.com/products/raspberry-pi-5/)、[台架方案](hardware-bench-plan.md) | 与上一项**合计**旧占位200元，不重复计价 |
+| 独立供电与数据连接所需分配/防回供件 | 0–1套，依最终拓扑 | 避免把双供电或USB连接当作自然兼容 | 型号待定，可能需改造；**不得直接并接两个USB电源** | [K151电路](https://docs.m5stack.com/en/StackChan)、[台架电源方案](../../docs/hardware-bench-plan.md) | 旧按键电源200元仅为总占位，是否足够未定 |
+| 电源/聊天按钮、信号线与双设备电源适配 | 2个功能入口＋适配1套 | 指定交互及保存关机循环 | 需改造；Pi J2仅解决Pi一侧，未解决K151同步 | [Pi规格](https://www.raspberrypi.com/products/raspberry-pi-5/)、[台架方案](../../docs/hardware-bench-plan.md) | 与上一项**合计**旧占位200元，不重复计价 |
 | 主机底托/防护固定、机器人固定、备用线接头、必要短网线 | 1套 | 装配、维护及扩展通道 | 另购／型号待定；成品Pi外壳可替代部分底托，需兼容散热器 | [Pi机械资料](https://www.raspberrypi.com/products/raspberry-pi-5/)、[K151尺寸](https://docs.m5stack.com/en/StackChan) | 合计旧占位160元 |
 | 必要加工/焊接服务或工具补齐 | 按适配量 | 电源与按钮改造 | 条件项，询价后从返工额核算 | 无已确认商品，待电气图 | 超出余量则另计 |
 | 运费、税费差额、返工和备件预留 | 1项 | 完整落地非器件费用 | 预算预留 | 按实际地址与服务报价 | 旧占位400元 |
@@ -149,7 +149,7 @@
 | ST3215标准12V舵机 ×2 | 底座yaw、颈部pitch | 候选另购 | 240 | [SKU22414](https://www.waveshare.net/shop/ST3215-Servo.htm)；目录109元/只；按实际头重复核，非7.4V版 |
 | 成品12V电源 ×1，≥6A为候选 | 运动独立供电 | 型号待定 | 150 | 插头/线径/配电需统一；大电源不改变控制板允许电流 |
 | 外设辅助5V供电／必要有源USB分配 ×1套 | 屏、声卡等负载 | 条件购买/待设计 | 200 | 先核峰值电流、数据枚举、无回供电；不是随便买USB Hub即可 |
-| 电源键、聊天键各1；背光门控、分配保护/连接件 ×1套 | PRD电源循环和外设保护 | 待设计/装配 | 200 | 电源键核Pi5 J2路径；见[电源台架](hardware-bench-plan.md)；控制板接口可能需适配 |
+| 电源键、聊天键各1；背光门控、分配保护/连接件 ×1套 | PRD电源循环和外设保护 | 待设计/装配 | 200 | 电源键核Pi5 J2路径；见[电源台架](../../docs/hardware-bench-plan.md)；控制板接口可能需适配 |
 | 固定底板、双轴支架/承载件、打印件、小五金 ×1套 | 固定底板＋活动上身＋俯仰头 | 代工/定制 | 450 | 按尺寸和重量报价；不含精美外壳，不认为现成小摄像头云台能直接承载 |
 | USB数据线、网线、备用线和应力释放 ×1套 | 连接与维护 | 按实际缺件购买 | 80 | 不重复买盒内已附线；信号/电源规格分别核 |
 | 运费、普通返工和备件余量 ×1项 | 成本预留，非硬件 | 预算项 | 500 | 不能用来掩盖尚未列入的主要器件 |
@@ -217,9 +217,9 @@
 | K151用microSD | 0–1 | 终端表情/字体资源和日志 | 条件另购；固件可不用时省略 | [SD接口](https://docs.m5stack.com/en/StackChan) | 历史比较保留80元，未确认必要性 |
 | K151 USB供电适配器 | 1 | 身体与动作供电 | 另购／输出电流与适配型号待定 | [电源接口](https://docs.m5stack.com/en/StackChan) | 旧分配70元 |
 | 主机↔K151 USB-A→C数据线 | 1 | 候选表情/动作/按键通信，兼刷写 | 已含50cm线；可用局域网替代运行时数据通道，但需另评估延迟/重连 | [K151装箱清单](https://shop.m5stack.com/products/stackchan-kawaii-co-created-open-source-ai-desktop-robot) | 0新增，延长/替换计线材包 |
-| 电源/聊天按钮、信号线、K151与Pi电源协调及防回供适配 | 2个功能入口＋适配1套 | 指定交互及保存关机 | 型号待定／需改造；不是买两个按钮即可完成 | [电路](https://docs.m5stack.com/en/StackChan)、[台架计划](hardware-bench-plan.md) | 旧分配200元，适配方案未证明可在此额内完成 |
+| 电源/聊天按钮、信号线、K151与Pi电源协调及防回供适配 | 2个功能入口＋适配1套 | 指定交互及保存关机 | 型号待定／需改造；不是买两个按钮即可完成 | [电路](https://docs.m5stack.com/en/StackChan)、[台架计划](../../docs/hardware-bench-plan.md) | 旧分配200元，适配方案未证明可在此额内完成 |
 | 主机底托/防护件、K151固定、声卡与扬声器小盒/隔振/走线、备用接头和必要短网线 | 1套 | 机械固定与声学布局 | 另购／需设计；音频器件应尽量放固定部分 | [板卡连接](https://wiki.seeedstudio.com/respeaker_xvf3800_introduction/)、[Pi机械资料](https://www.raspberrypi.com/products/raspberry-pi-5/) | 沿用旧160元固定线材占位；**新增音频安装的实际增量尚未重算** |
-| 必要的有源USB分配/独立外设供电 | 0–1套，测得需要才买 | 若主机USB供电预算不足，补足供电 | 型号待定；须核数据枚举和主机关机后无回供 | [Pi规格](https://www.raspberrypi.com/products/raspberry-pi-5/)、[台架计划](hardware-bench-plan.md) | **未在4050–4450元里独立计价**，不是默认已含或必购 |
+| 必要的有源USB分配/独立外设供电 | 0–1套，测得需要才买 | 若主机USB供电预算不足，补足供电 | 型号待定；须核数据枚举和主机关机后无回供 | [Pi规格](https://www.raspberrypi.com/products/raspberry-pi-5/)、[台架计划](../../docs/hardware-bench-plan.md) | **未在4050–4450元里独立计价**，不是默认已含或必购 |
 | 必要加工/焊接服务或工具补齐 | 按适配量 | 按键/电源/音频底托制作 | 条件项 | 待电气图、结构尺寸和加工报价 | 从余量核算，超出则另计 |
 | 运费、税费差额、返工和备件预留 | 1项 | 完整落地费用 | 预算预留 | 按地址和服务报价 | 沿用旧400元；新增设备运费仍须复核 |
 
@@ -245,11 +245,11 @@
 
 | 项目 | 数量 | 用途和范围 | 采购状态 | 价格 | 依据 |
 |---|---:|---|---|---|---|
-| Raspberry Pi 5 4GB | 1 | 专用 Linux 主机，现有业务与设备桥 | 成品候选 | 待询 | [Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/)、[现有基线](hardware-route-review-2026-11-01.md) |
+| Raspberry Pi 5 4GB | 1 | 专用 Linux 主机，现有业务与设备桥 | 成品候选 | 待询 | [Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/)、[现有基线](../../docs/hardware-route-review-2026-11-01.md) |
 | 官方 27W USB-C 电源，中国适用插头 | 1 | 仅主机供电；不默认把舵机负载压在 Pi USB 上 | 成品候选 | 待询 | [电源](https://www.raspberrypi.com/products/27w-power-supply/) |
 | Active Cooler | 1 | 主机散热 | 成品候选 | 待询 | [散热](https://www.raspberrypi.com/products/active-cooler/) |
-| 128GB microSD、必要读卡器 | 各 1 | OS、配置、日志、记忆；读卡器已有则复用 | 成品候选，具体料号待定 | 待询 | [现有基线](hardware-route-review-2026-11-01.md) |
-| Pi 主机小盒/底板及固定柱 | 1 套 | 独立固定，保留散热、USB、网口和电源键走线 | 成品或打印待定 | 待询 | [台架布局](hardware-bench-plan.md) |
+| 128GB microSD、必要读卡器 | 各 1 | OS、配置、日志、记忆；读卡器已有则复用 | 成品候选，具体料号待定 | 待询 | [现有基线](../../docs/hardware-route-review-2026-11-01.md) |
+| Pi 主机小盒/底板及固定柱 | 1 套 | 独立固定，保留散热、USB、网口和电源键走线 | 成品或打印待定 | 待询 | [台架布局](../../docs/hardware-bench-plan.md) |
 | PCB V2.0 Base 完整 PCBA | 1 | ESP32-S3、板载麦克风、功放、接口及阻容 | **代工/成板待询；生产资料未齐** | 待询 | [Base BOM](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/mechanical/BOM_V2.0_Base_PCB_V2.0_Base_2026-09-02.xlsx)、[硬件资料](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/README_zh.md) |
 | LMD2718T271-OA5 PDM 麦克风 | 1，含于上项 | 收音；不是再买一块 USB 麦克风 | 板内已含，报价确认 | 含 Base PCBA | [Base BOM](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/mechanical/BOM_V2.0_Base_PCB_V2.0_Base_2026-09-02.xlsx) |
 | NS4168 功放 | 1，含于 Base | I2S 外放，不等于独立 AEC 芯片 | 板内已含，报价确认 | 含 Base PCBA | [Base BOM](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/mechanical/BOM_V2.0_Base_PCB_V2.0_Base_2026-09-02.xlsx) |
@@ -259,20 +259,20 @@
 | 3.7g 舵机，JR2.54 | 1 | 水平；必须支持 5V，长宽 20.2×8.5mm，允许 ±0.5mm | 成品候选 | 待询 | [硬件资料](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/README_zh.md) |
 | 2011 腔体喇叭 | 1 | 8Ω 1W、1.25 插头；与板载功放匹配 | 成品候选 | 待询 | [硬件资料](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/README_zh.md) |
 | FPC 天线 | 1 | IPEX 一代、5cm 线、28×9mm；不大于30×30mm | 成品候选 | 待询 | [硬件资料](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/README_zh.md) |
-| 机器人逻辑端 5V USB-C 电源与供电线 | 1 路 | Base 逻辑供电；可与合规辅助电源整合，但必须先冻结原理图 | 成品电源候选；最终拓扑待定 | 待询 | [硬件资料](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/README_zh.md)、[台架计划](hardware-bench-plan.md) |
+| 机器人逻辑端 5V USB-C 电源与供电线 | 1 路 | Base 逻辑供电；可与合规辅助电源整合，但必须先冻结原理图 | 成品电源候选；最终拓扑待定 | 待询 | [硬件资料](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/README_zh.md)、[台架计划](../../docs/hardware-bench-plan.md) |
 | 舵机独立 5V 电源 | 1 路 | 作者下限为 ≥1A；双轴峰值/堵转/压降另核，不把 1A 当已验证容量 | 成品，额定电流待核 | 待询 | [硬件资料](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/README_zh.md) |
-| 低压配电、保护、接头与共地线 | 1 套 | 逻辑/运动分路、防 USB 回灌、关机后执行器安全状态 | 待电气图后采购/代工 | 待询 | [台架计划](hardware-bench-plan.md) |
+| 低压配电、保护、接头与共地线 | 1 套 | 逻辑/运动分路、防 USB 回灌、关机后执行器安全状态 | 待电气图后采购/代工 | 待询 | [台架计划](../../docs/hardware-bench-plan.md) |
 | 1.25mm 6pin 双头同向硅胶线 | 1 | 长150mm，连接主板与屏幕板；不能买反向线 | 成品或定制压线 | 待询 | [硬件资料](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/README_zh.md) |
 | USB 数据线 | 1 | 初始烧录、维修、串口日志；即使日常 Wi-Fi 也需要 | 成品候选 | 待询 | [固件说明](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/README_zh.md) |
 | 当前版本整机打印件 | 1 套 | 按固定 STEP 核板卡、舵机、走线；报价需按可制造零件拆分 | 打印代工 | 待询 | [结构 STEP](https://github.com/OpenDeskBot/brufik_in_one_v2/tree/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/mechanical) |
 | M2×5 / M2×8 / M2×12 平尾自攻螺丝 | 14 / 9 / 2 | 原每套数量；改造件另核，报价可含少量备件 | 成品 | 待询 | [硬件资料](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/README_zh.md) |
-| 外置常开电源键、独立聊天键及线束 | 各 1 | Pi J2 电源事件与聊天输入分开；按压启动后不得直接越过未启用状态 | 成品按钮；输入接法待定 | 待询 | [PRD](../prd/prd-v1.1.md)、[台架计划](hardware-bench-plan.md) |
-| 背光或显示电源门控改造 | 1 套 | 当前 BL 硬接 3.3V；补真正灭背光、避免信号回灌 | 电路与器件待定，需返修/代工 | 待询 | [硬件引脚表](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/README_zh.md)、[PRD](../prd/prd-v1.1.md) |
-| 终端开关机联动改造 | 1 套 | Linux 保存关机后屏/音频/运动停止；必要低压门控和信号隔离 | 方案待定；与上项/配电去重报价 | 待询 | [PRD](../prd/prd-v1.1.md)、[台架计划](hardware-bench-plan.md) |
-| 摄像头 OV3660 与固定卡子 | V1 0；原方案各1 | V1 不采购；保留连接，先确认无相机也能正常启动 | 本期不买 | 不计 | [硬件资料](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/README_zh.md)、[PRD](../prd/prd-v1.1.md) |
-| 调试网线/必要转接、标签、绝缘与线束固定辅材 | 1 套 | 主机维护、未来有线节点空间和基本可靠装配；已有件可复用 | 成品，按盘点补缺 | 待询 | [台架计划](hardware-bench-plan.md) |
-| 组装/测试工具或代工调试服务 | 1 套 | 螺丝刀、万用表等；细间距 PCBA 优先外包，不默认用户现有焊接工具 | 盘点后采购/委托 | 待询 | [装配资料](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/README_zh.md)、[台架计划](hardware-bench-plan.md) |
-| 运输、PCBA 起订量、打印/接线返工、备件余量 | 1 项 | 订单可能需多块板；不能只算装机各1块成本 | 预算待询后预留 | 待定 | [现有预算口径](hardware-route-review-2026-11-01.md) |
+| 外置常开电源键、独立聊天键及线束 | 各 1 | Pi J2 电源事件与聊天输入分开；按压启动后不得直接越过未启用状态 | 成品按钮；输入接法待定 | 待询 | [PRD](../../prd/prd-v1.1.md)、[台架计划](../../docs/hardware-bench-plan.md) |
+| 背光或显示电源门控改造 | 1 套 | 当前 BL 硬接 3.3V；补真正灭背光、避免信号回灌 | 电路与器件待定，需返修/代工 | 待询 | [硬件引脚表](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/README_zh.md)、[PRD](../../prd/prd-v1.1.md) |
+| 终端开关机联动改造 | 1 套 | Linux 保存关机后屏/音频/运动停止；必要低压门控和信号隔离 | 方案待定；与上项/配电去重报价 | 待询 | [PRD](../../prd/prd-v1.1.md)、[台架计划](../../docs/hardware-bench-plan.md) |
+| 摄像头 OV3660 与固定卡子 | V1 0；原方案各1 | V1 不采购；保留连接，先确认无相机也能正常启动 | 本期不买 | 不计 | [硬件资料](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/README_zh.md)、[PRD](../../prd/prd-v1.1.md) |
+| 调试网线/必要转接、标签、绝缘与线束固定辅材 | 1 套 | 主机维护、未来有线节点空间和基本可靠装配；已有件可复用 | 成品，按盘点补缺 | 待询 | [台架计划](../../docs/hardware-bench-plan.md) |
+| 组装/测试工具或代工调试服务 | 1 套 | 螺丝刀、万用表等；细间距 PCBA 优先外包，不默认用户现有焊接工具 | 盘点后采购/委托 | 待询 | [装配资料](https://github.com/OpenDeskBot/brufik_in_one_v2/blob/39b408019bfe4d63e39ff71e6bd42a8fe602c716/hardware/README_zh.md)、[台架计划](../../docs/hardware-bench-plan.md) |
+| 运输、PCBA 起订量、打印/接线返工、备件余量 | 1 项 | 订单可能需多块板；不能只算装机各1块成本 | 预算待询后预留 | 待定 | [现有预算口径](../../docs/hardware-route-review-2026-11-01.md) |
 
 **采购闸门：** 成板/生产资料可获得 → 硬件版本与固件对应 → 供电/背光及两轴结构映射明确 → 总价含加工与余量 ≤5000 元 → 才能形成可下单清单。不存在“先买两个 PCB 裸板就等于硬件准备完成”。
 
@@ -292,11 +292,11 @@
 
 | 项目 | 数量 | 用途和范围 | 采购状态 | 价格 | 依据 |
 |---|---:|---|---|---|---|
-| Raspberry Pi 5 4GB | 1 | 专用 Linux 主机，Node 与 CDC/DBOT 桥 | 成品候选 | 待询 | [Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/)、[现有基线](hardware-route-review-2026-11-01.md) |
+| Raspberry Pi 5 4GB | 1 | 专用 Linux 主机，Node 与 CDC/DBOT 桥 | 成品候选 | 待询 | [Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/)、[现有基线](../../docs/hardware-route-review-2026-11-01.md) |
 | 官方 27W USB-C 电源 | 1 | 主机供电；USB 外设供电预算另核 | 成品候选 | 待询 | [电源](https://www.raspberrypi.com/products/27w-power-supply/) |
 | Active Cooler | 1 | 主机散热 | 成品候选 | 待询 | [散热](https://www.raspberrypi.com/products/active-cooler/) |
-| 128GB microSD、必要读卡器 | 各 1 | 系统和本地业务数据；无需因终端 Flash 再加一张卡 | 成品候选 | 待询 | [现有基线](hardware-route-review-2026-11-01.md)、[固件分区说明](https://github.com/tudoom/OpenDeskBotV2/blob/1cf5050ee63b1fe4cae6b7815e565a0955f15bd6/hardware/README.md) |
-| 主机小盒/底板和固定柱 | 1 套 | 独立固定、散热和串口线应力保护 | 成品/打印待定 | 待询 | [台架计划](hardware-bench-plan.md) |
+| 128GB microSD、必要读卡器 | 各 1 | 系统和本地业务数据；无需因终端 Flash 再加一张卡 | 成品候选 | 待询 | [现有基线](../../docs/hardware-route-review-2026-11-01.md)、[固件分区说明](https://github.com/tudoom/OpenDeskBotV2/blob/1cf5050ee63b1fe4cae6b7815e565a0955f15bd6/hardware/README.md) |
+| 主机小盒/底板和固定柱 | 1 套 | 独立固定、散热和串口线应力保护 | 成品/打印待定 | 待询 | [台架计划](../../docs/hardware-bench-plan.md) |
 | 与固定固件对应的 Deskbot v2 主板 PCBA | 1 套 | 自定义 ESP32-S3 默认目标；板数、版本与 BOM 未取得 | 成板/代工待询，**资料待补** | 待询 | [硬件说明](https://github.com/tudoom/OpenDeskBotV2/blob/1cf5050ee63b1fe4cae6b7815e565a0955f15bd6/hardware/README.md)、[生产资料入口](https://oshwhub.com/eda_hedwaytj/project_asxqsedb) |
 | 屏幕适配/连接 PCBA | 待定 | 是否独立板、是否含在主板套件须查最新生产包 | 待核，禁止套用 brufik LCM | 待询 | [生产资料入口](https://oshwhub.com/eda_hedwaytj/project_asxqsedb) |
 | 显示屏 | 1 | 固件确认 ST7789P 240×284；物理尺寸、针脚、批次待核 | 成品型号待定 | 待询 | [deskbot_config.h](https://github.com/tudoom/OpenDeskBotV2/blob/1cf5050ee63b1fe4cae6b7815e565a0955f15bd6/hardware/firmware/deskbot_config.h) |
@@ -306,17 +306,17 @@
 | 水平舵机 | 1 | GPIO16；不能套用另一仓库的3.7g规格 | 成品/改装待定 | 待询 | [引脚配置](https://github.com/tudoom/OpenDeskBotV2/blob/1cf5050ee63b1fe4cae6b7815e565a0955f15bd6/hardware/firmware/deskbot_config.h) |
 | 生产版天线 | 待定 | USB 方案不使用设备 Wi-Fi；是否可不装需确认射频/配网维护需求 | 待核；不默认购买 | 待询 | [硬件说明](https://github.com/tudoom/OpenDeskBotV2/blob/1cf5050ee63b1fe4cae6b7815e565a0955f15bd6/hardware/README.md)、[生产资料入口](https://oshwhub.com/eda_hedwaytj/project_asxqsedb) |
 | USB 数据线 | 1 | 日常 CDC、烧录、维修，需有数据导线 | 成品候选 | 待询 | [USB 说明](https://github.com/tudoom/OpenDeskBotV2/blob/1cf5050ee63b1fe4cae6b7815e565a0955f15bd6/hardware/README.md) |
-| 终端逻辑供电路径 | 1 路 | 优先核 USB 供电是否满足；如外接电源，需防回灌，不盲目双路供电 | 规格/是否需独立适配器待定 | 待询 | [USB过流/保护说明](https://github.com/tudoom/OpenDeskBotV2/blob/1cf5050ee63b1fe4cae6b7815e565a0955f15bd6/hardware/README.md)、[台架计划](hardware-bench-plan.md) |
-| 舵机辅助电源与低压配电保护 | 1 路+1套 | 双轴峰值、电压、地线和主机 USB 容量未核，不能省略预算 | 成品电源与配电方案待定 | 待询 | [硬件说明](https://github.com/tudoom/OpenDeskBotV2/blob/1cf5050ee63b1fe4cae6b7815e565a0955f15bd6/hardware/README.md)、[台架计划](hardware-bench-plan.md) |
+| 终端逻辑供电路径 | 1 路 | 优先核 USB 供电是否满足；如外接电源，需防回灌，不盲目双路供电 | 规格/是否需独立适配器待定 | 待询 | [USB过流/保护说明](https://github.com/tudoom/OpenDeskBotV2/blob/1cf5050ee63b1fe4cae6b7815e565a0955f15bd6/hardware/README.md)、[台架计划](../../docs/hardware-bench-plan.md) |
+| 舵机辅助电源与低压配电保护 | 1 路+1套 | 双轴峰值、电压、地线和主机 USB 容量未核，不能省略预算 | 成品电源与配电方案待定 | 待询 | [硬件说明](https://github.com/tudoom/OpenDeskBotV2/blob/1cf5050ee63b1fe4cae6b7815e565a0955f15bd6/hardware/README.md)、[台架计划](../../docs/hardware-bench-plan.md) |
 | 匹配生产版本的屏/音频/舵机内部线束 | 1 套 | 针数、正反向、长度、接头全部待当前 BOM；不得照搬 brufik | 压线代工/成品待核 | 待询 | [生产资料入口](https://oshwhub.com/eda_hedwaytj/project_asxqsedb) |
 | 匹配打印结构、支架与底板 | 1 套 | 两轴机构、主板、屏幕、喇叭安装及防夹线 | 打印代工，版本待冻结 | 待询 | [生产资料入口](https://oshwhub.com/eda_hedwaytj/project_asxqsedb) |
 | 紧固件、轴承/轴套、舵盘 | 1 套，明细待定 | 以冻结 CAD 的孔径、受力和舵盘为准 | 成品待核 | 待询 | [生产资料入口](https://oshwhub.com/eda_hedwaytj/project_asxqsedb) |
-| 电源键、独立聊天键及线束 | 各 1 | Pi J2 与会话输入；本体已有独立用户键则核实后复用 | 成品候选，已有键未核 | 待询 | [PRD](../prd/prd-v1.1.md)、[台架计划](hardware-bench-plan.md) |
-| 冷启动背光及终端关机联动改造 | 1 套 | 原待机脸不符合未启用黑屏；是否可GPIO控背光、是否需电源门控待图纸 | 电路/固件待定 | 待询 | [启动待机说明](https://github.com/tudoom/OpenDeskBotV2/blob/1cf5050ee63b1fe4cae6b7815e565a0955f15bd6/hardware/README.md)、[PRD](../prd/prd-v1.1.md) |
-| 摄像头与支架 | V1 0 | 原固件新批次适配OV3660；先确认缺相机可启动，预留不等于要采购 | 本期不买 | 不计 | [硬件说明](https://github.com/tudoom/OpenDeskBotV2/blob/1cf5050ee63b1fe4cae6b7815e565a0955f15bd6/hardware/README.md)、[PRD](../prd/prd-v1.1.md) |
-| 调试网线、绝缘与线束固定辅材 | 1 套 | 维护、主机有线口预留、基本装配 | 成品按缺口补 | 待询 | [台架计划](hardware-bench-plan.md) |
+| 电源键、独立聊天键及线束 | 各 1 | Pi J2 与会话输入；本体已有独立用户键则核实后复用 | 成品候选，已有键未核 | 待询 | [PRD](../../prd/prd-v1.1.md)、[台架计划](../../docs/hardware-bench-plan.md) |
+| 冷启动背光及终端关机联动改造 | 1 套 | 原待机脸不符合未启用黑屏；是否可GPIO控背光、是否需电源门控待图纸 | 电路/固件待定 | 待询 | [启动待机说明](https://github.com/tudoom/OpenDeskBotV2/blob/1cf5050ee63b1fe4cae6b7815e565a0955f15bd6/hardware/README.md)、[PRD](../../prd/prd-v1.1.md) |
+| 摄像头与支架 | V1 0 | 原固件新批次适配OV3660；先确认缺相机可启动，预留不等于要采购 | 本期不买 | 不计 | [硬件说明](https://github.com/tudoom/OpenDeskBotV2/blob/1cf5050ee63b1fe4cae6b7815e565a0955f15bd6/hardware/README.md)、[PRD](../../prd/prd-v1.1.md) |
+| 调试网线、绝缘与线束固定辅材 | 1 套 | 维护、主机有线口预留、基本装配 | 成品按缺口补 | 待询 | [台架计划](../../docs/hardware-bench-plan.md) |
 | 工具或整板/整机代工测试服务 | 1 套 | 避免默认用户可完成细间距焊板；需可读串口日志与量电源 | 盘点后采购/委托 | 待询 | [硬件诊断说明](https://github.com/tudoom/OpenDeskBotV2/blob/1cf5050ee63b1fe4cae6b7815e565a0955f15bd6/hardware/README.md) |
-| 运费、起订量、打印/电源返工及备件余量 | 1 项 | USB供电与生产资料缺口可能带来改板，不能按零计 | 询价后预留 | 待定 | [现有预算口径](hardware-route-review-2026-11-01.md) |
+| 运费、起订量、打印/电源返工及备件余量 | 1 项 | USB供电与生产资料缺口可能带来改板，不能按零计 | 询价后预留 | 待定 | [现有预算口径](../../docs/hardware-route-review-2026-11-01.md) |
 
 **采购闸门：** 取得可用的当前硬件包或匹配成板 → 证明上述资料与固定固件一致 → 确认 USB 未配网时 AFE 健康且持续录放 → 确认 Linux 桥和停播 → 再冻结采购。不能因 README 写了“出厂已烧录”就推定存在可购买现货。
 
@@ -375,29 +375,29 @@
 | Raspberry Pi 5 4GB | 1 | 本体 Linux 主机；无需再加外置主机 | 成品候选 | 待询 | [Pi5](https://www.raspberrypi.com/products/raspberry-pi-5/)、[原BOM](https://verdibot.verdure-hiro.cn/zh/hardware/bill-of-materials.html) |
 | 官方27W USB-C电源 | 1 | 采用当前基线，不沿用未核的15W整机供电假设 | 成品候选 | 待询 | [官方电源](https://www.raspberrypi.com/products/27w-power-supply/) |
 | Active Cooler或同等兼容散热 | 1 | 候选Active Cooler；须检查扩展板与壳内间隙后冻结 | 成品，机械兼容待核 | 待询 | [散热尺寸入口](https://www.raspberrypi.com/products/active-cooler/)、[Pi5结构](https://github.com/maker-community/VerdiBot) |
-| 128GB microSD、必要读卡器 | 各1 | 沿用当前Jarvis存储基线；不同时买原表64GB | 成品候选 | 待询 | [现有基线](hardware-route-review-2026-11-01.md) |
+| 128GB microSD、必要读卡器 | 各1 | 沿用当前Jarvis存储基线；不同时买原表64GB | 成品候选 | 待询 | [现有基线](../../docs/hardware-route-review-2026-11-01.md) |
 | 主控/显示扩展板完整PCBA | 1套 | Pi接口、显示及电源；可能含显示转接，不再默认重复一块 | 代工，需冻结EDA版本 | 待询 | [PCB说明](https://verdibot.verdure-hiro.cn/zh/hardware/pcb-manufacturing.html)、[EDA](https://oshwhub.com/greenshade/verdibot) |
 | USB语音/Hub完整PCBA | 1套 | 本次固定选USB方向；PCM2912A等元件按同版BOM含入 | 代工，详细完整BOM待核 | 待询 | [PCB说明](https://verdibot.verdure-hiro.cn/zh/hardware/pcb-manufacturing.html)、[BOM前段](https://verdibot.verdure-hiro.cn/zh/hardware/bill-of-materials.html) |
 | PCM2912A与USB板阻容/连接器 | 按板含 | USB声卡核心及配套；不是独立USB成品声卡再购买一次 | PCBA已含待报价确认 | 含上项 | [官方BOM](https://verdibot.verdure-hiro.cn/zh/hardware/bill-of-materials.html) |
 | 主显示屏 | 1 | **2.4寸裸屏/3.5寸SPI冲突待消除**，必须选匹配PCB与CAD的一款 | 型号待冻结；不可同时下单 | 待询 | [官方BOM](https://verdibot.verdure-hiro.cn/zh/hardware/bill-of-materials.html) |
-| 胸前OLED及配套连接 | V1拟0；若电气依赖则1 | Jarvis不要求第二屏；需确认省略不阻塞启动与结构 | 待工程核对，不预购 | 待询/省略不计 | [PCB说明](https://verdibot.verdure-hiro.cn/zh/hardware/pcb-manufacturing.html)、[PRD](../prd/prd-v1.1.md) |
+| 胸前OLED及配套连接 | V1拟0；若电气依赖则1 | Jarvis不要求第二屏；需确认省略不阻塞启动与结构 | 待工程核对，不预购 | 待询/省略不计 | [PCB说明](https://verdibot.verdure-hiro.cn/zh/hardware/pcb-manufacturing.html)、[PRD](../../prd/prd-v1.1.md) |
 | USB音频板匹配麦克风 | 1功能位 | 可能板含；型号与安装声学待同版原理图，**不套用I2S那段** | 待核；板含则去重 | 待询 | [PCB说明](https://verdibot.verdure-hiro.cn/zh/hardware/pcb-manufacturing.html)、[EDA](https://oshwhub.com/greenshade/verdibot) |
 | USB音频板匹配扬声器/功放 | 1套 | 型号、阻抗、腔体和功放是否板含待同版电路；不默认抄4Ω3W I2S组合 | 成品/板内待核 | 待询 | [PCB说明](https://verdibot.verdure-hiro.cn/zh/hardware/pcb-manufacturing.html)、[EDA](https://oshwhub.com/greenshade/verdibot) |
 | 改装舵机驱动PCBA | 两轴所需量，待拓扑核实 | 官方说明I2C驱动改装舵机；原表六套芯片不等于本方案必须买6板 | 代工，数量/固件待冻结 | 待询 | [PCB说明](https://verdibot.verdure-hiro.cn/zh/hardware/pcb-manufacturing.html)、[官方BOM](https://verdibot.verdure-hiro.cn/zh/hardware/bill-of-materials.html) |
-| 俯仰执行器 | 1 | 原表4.3g/9g不能直接分配到本轴；按CAD/扭矩/改装要求选定 | 成品+改装/代工待定 | 待询 | [官方BOM](https://verdibot.verdure-hiro.cn/zh/hardware/bill-of-materials.html)、[PRD](../prd/prd-v1.1.md) |
-| 身体水平执行器 | 1 | 要实现底板不动、上方身体转；不是任意原关节直接替换 | 成品+改装/代工待定 | 待询 | [结构资料](https://github.com/maker-community/VerdiBot)、[PRD](../prd/prd-v1.1.md) |
-| 执行器辅助电源 | 1路 | 实际电压、峰值和分配待冻结；不通过Pi5V口盲供所有关节 | 成品适配器待选 | 待询 | [台架计划](hardware-bench-plan.md)、[EDA](https://oshwhub.com/greenshade/verdibot) |
-| 低压分配/保护、接地与防回灌连接 | 1套 | Pi、屏、USB板、执行器的供电边界和关机状态 | 电路/器件待定 | 待询 | [台架计划](hardware-bench-plan.md) |
+| 俯仰执行器 | 1 | 原表4.3g/9g不能直接分配到本轴；按CAD/扭矩/改装要求选定 | 成品+改装/代工待定 | 待询 | [官方BOM](https://verdibot.verdure-hiro.cn/zh/hardware/bill-of-materials.html)、[PRD](../../prd/prd-v1.1.md) |
+| 身体水平执行器 | 1 | 要实现底板不动、上方身体转；不是任意原关节直接替换 | 成品+改装/代工待定 | 待询 | [结构资料](https://github.com/maker-community/VerdiBot)、[PRD](../../prd/prd-v1.1.md) |
+| 执行器辅助电源 | 1路 | 实际电压、峰值和分配待冻结；不通过Pi5V口盲供所有关节 | 成品适配器待选 | 待询 | [台架计划](../../docs/hardware-bench-plan.md)、[EDA](https://oshwhub.com/greenshade/verdibot) |
+| 低压分配/保护、接地与防回灌连接 | 1套 | Pi、屏、USB板、执行器的供电边界和关机状态 | 电路/器件待定 | 待询 | [台架计划](../../docs/hardware-bench-plan.md) |
 | 匹配当前板卡的屏排线/USB/舵机线束 | 1套，分项待冻结 | 原页0.8接头数量与文字矛盾，不能把原表数字当最终线束 | 压线代工/成品待核 | 待询 | [官方BOM](https://verdibot.verdure-hiro.cn/zh/hardware/bill-of-materials.html) |
-| 两轴裁剪后的结构打印件 | 1套 | Pi5版头、身体、固定底板、轴支撑；原手臂/耳朵件不照单打印 | CAD修改后打印代工 | 待询 | [结构仓库](https://github.com/maker-community/VerdiBot)、[PRD](../prd/prd-v1.1.md) |
+| 两轴裁剪后的结构打印件 | 1套 | Pi5版头、身体、固定底板、轴支撑；原手臂/耳朵件不照单打印 | CAD修改后打印代工 | 待询 | [结构仓库](https://github.com/maker-community/VerdiBot)、[PRD](../../prd/prd-v1.1.md) |
 | 匹配结构的轴承、轴套、舵盘、固定柱与螺丝 | 1套，规格数量待冻结 | 原BOM两段轴承与紧固件不一致；按最终CAD生成清单 | 成品待核 | 待询 | [官方BOM](https://verdibot.verdure-hiro.cn/zh/hardware/bill-of-materials.html)、[结构仓库](https://github.com/maker-community/VerdiBot) |
-| 电源键、聊天键及线束 | 各1 | Pi J2电源循环和独立会话入口；如原板已有则核实复用 | 成品/板含待核 | 待询 | [台架计划](hardware-bench-plan.md)、[PRD](../prd/prd-v1.1.md) |
-| 背光与终端供电联动改造 | 1套 | 满足冷启动黑屏、无收音、关机后动作和播放停止；是否原板可控未核 | 电路与固件待定 | 待询 | [PRD](../prd/prd-v1.1.md)、[EDA](https://oshwhub.com/greenshade/verdibot) |
-| 原设计Pi5 UPS/电池 | V1 0 | 不照抄原BOM采购；无电池改为稳定插电后，必须重新确认原板电源路径 | 本期不买，改造成本在上项 | 不计 | [官方BOM](https://verdibot.verdure-hiro.cn/zh/hardware/bill-of-materials.html)、[PRD](../prd/prd-v1.1.md) |
-| 摄像头、环境传感器、额外手臂/耳朵电机 | V1 0 | 非当前需求；省略需确认代码不强依赖，摄像头连接能力保留 | 本期不买 | 不计 | [官方BOM](https://verdibot.verdure-hiro.cn/zh/hardware/bill-of-materials.html)、[PRD](../prd/prd-v1.1.md) |
-| 调试USB线/网线、必要转接与装配辅材 | 1套 | 烧录、日志、电气验证、维护和有线网络预留 | 成品按盘点补缺 | 待询 | [PCB说明](https://verdibot.verdure-hiro.cn/zh/hardware/pcb-manufacturing.html)、[台架计划](hardware-bench-plan.md) |
+| 电源键、聊天键及线束 | 各1 | Pi J2电源循环和独立会话入口；如原板已有则核实复用 | 成品/板含待核 | 待询 | [台架计划](../../docs/hardware-bench-plan.md)、[PRD](../../prd/prd-v1.1.md) |
+| 背光与终端供电联动改造 | 1套 | 满足冷启动黑屏、无收音、关机后动作和播放停止；是否原板可控未核 | 电路与固件待定 | 待询 | [PRD](../../prd/prd-v1.1.md)、[EDA](https://oshwhub.com/greenshade/verdibot) |
+| 原设计Pi5 UPS/电池 | V1 0 | 不照抄原BOM采购；无电池改为稳定插电后，必须重新确认原板电源路径 | 本期不买，改造成本在上项 | 不计 | [官方BOM](https://verdibot.verdure-hiro.cn/zh/hardware/bill-of-materials.html)、[PRD](../../prd/prd-v1.1.md) |
+| 摄像头、环境传感器、额外手臂/耳朵电机 | V1 0 | 非当前需求；省略需确认代码不强依赖，摄像头连接能力保留 | 本期不买 | 不计 | [官方BOM](https://verdibot.verdure-hiro.cn/zh/hardware/bill-of-materials.html)、[PRD](../../prd/prd-v1.1.md) |
+| 调试USB线/网线、必要转接与装配辅材 | 1套 | 烧录、日志、电气验证、维护和有线网络预留 | 成品按盘点补缺 | 待询 | [PCB说明](https://verdibot.verdure-hiro.cn/zh/hardware/pcb-manufacturing.html)、[台架计划](../../docs/hardware-bench-plan.md) |
 | PCBA代工测试与舵机改装服务/工具 | 1套 | 现无工具条件下，不把细间距焊接和改舵机劳动算免费 | 询价；已有工具复用 | 待询 | [制作资料](https://verdibot.verdure-hiro.cn/zh/hardware/pcb-manufacturing.html)、[官方BOM](https://verdibot.verdure-hiro.cn/zh/hardware/bill-of-materials.html) |
-| 运费、最低板量、改版打印及电源/音频返工余量 | 1项 | 当前BOM未齐带来额外迭代；不以作者旧总价替代 | 询价后预留 | 待定 | [现有预算口径](hardware-route-review-2026-11-01.md) |
+| 运费、最低板量、改版打印及电源/音频返工余量 | 1项 | 当前BOM未齐带来额外迭代；不以作者旧总价替代 | 询价后预留 | 待定 | [现有预算口径](../../docs/hardware-route-review-2026-11-01.md) |
 
 **采购闸门：** 选定同一版EDA/CAD/固件 → 取得无冲突完整BOM与改装舵机说明 → 证明可裁剪到规定两轴并保留散热 → 明确USB音频AEC实施路径 → 获得代工/加工全价。未完成前，C4仅能评为设计参考，不能评成比B-L更便宜省时的成品路线。
 
@@ -526,7 +526,7 @@ Wireless 官方提供 SSH、自定义系统镜像与应用流程，因此本地�
 
 ## 依据与维护方式
 
-本文件汇总并更新了[原四路线及预算](hardware-route-review-2026-11-01.md)、[新增路线调查](hardware-alternatives-review-2026-11-05.md)、[B-L工时明细](bl-work-breakdown-2026-11-02.md)和[电源/台架计划](hardware-bench-plan.md)。外部购买与硬件来源随各方案列出。
+本文件汇总并更新了[原四路线及预算](../../docs/hardware-route-review-2026-11-01.md)、[新增路线调查](hardware-alternatives-review-2026-11-05.md)、[B-L工时明细](bl-work-breakdown-2026-11-02.md)和[电源/台架计划](../../docs/hardware-bench-plan.md)。外部购买与硬件来源随各方案列出。
 
 本轮新增价格更正：XVF3800单件现为US$60.99，旧报告US$54.90仅作历史记录；小木编程版独立页面为US$380，标准版US$330不混用。价格核查不代表付款页面、国内税运或发货承诺已确认。
 
