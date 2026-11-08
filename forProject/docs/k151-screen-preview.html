@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<link rel="icon" href="data:,">
+<title>Jarvis · K151 脸屏试读</title>
+<style>
+  :root { color-scheme:light; --ink:#17232a; --muted:#536368; --line:#ccd6d2; --teal:#145b54; --scale:1; --u:calc(1mm * var(--scale)); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#f2f5f2; color:var(--ink); font:16px/1.55 "Inter","PingFang SC","Microsoft YaHei",sans-serif; }
+  main { max-width:1070px; margin:auto; padding:clamp(22px,4vw,56px) clamp(17px,4vw,44px); }
+  header { padding:0 0 19px; border-bottom:1px solid var(--line); }
+  h1,h2,p { margin:0; }
+  h1 { font-size:clamp(30px,4.4vw,46px); line-height:1.18; letter-spacing:-.045em; }
+  h2,legend { font-size:18px; font-weight:680; }
+  header p { margin-top:10px; color:var(--muted); }
+  .layout { display:grid; grid-template-columns:minmax(0,1.06fr) minmax(0,1fr); gap:26px; align-items:start; margin:24px 0; }
+  section,fieldset { min-width:0; }
+  .stage { display:grid; place-items:center; overflow:auto; min-height:270px; padding:24px 8px; background:#e5ebe8; border:1px solid var(--line); border-radius:10px; }
+  canvas { display:block; width:calc(var(--u) * 40.64); height:calc(var(--u) * 30.48); box-shadow:0 0 0 1px #889b99; background:#03070c; image-rendering:pixelated; }
+  .stage-caption { margin-top:8px; font-size:13px; color:var(--muted); }
+  .section { margin-bottom:20px; }
+  .settings { border:1px solid var(--line); border-radius:10px; background:#fff; padding:20px; }
+  .help { color:var(--muted); font-size:14px; margin:5px 0 12px; }
+  .ruler-box { overflow-x:auto; padding:7px 4px 5px; }
+  .ruler { position:relative; width:calc(var(--u) * var(--reference-length,50)); height:16px; border-bottom:2px solid var(--teal); background:repeating-linear-gradient(to right, var(--teal) 0 1px, transparent 1px 100%) bottom left / calc(var(--u) * 10) 7px repeat-x; }
+  .ruler:before,.ruler:after { content:""; position:absolute; height:15px; width:2px; bottom:-2px; background:var(--teal); }
+  .ruler:before { left:0; } .ruler:after { right:0; }
+  .range { display:flex; align-items:center; gap:12px; margin:11px 0 2px; }
+  input[type=range] { accent-color:var(--teal); min-width:0; flex:1; }
+  output { min-width:48px; font-variant-numeric:tabular-nums; text-align:right; }
+  fieldset { padding:0; margin:14px 0 0; border:0; }
+  legend { padding:0 0 4px; font-size:15px; }
+  .choices,.buttons { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .choice { position:relative; display:inline-block; }
+  .choice input { position:absolute; opacity:0; }
+  .choice span,button { display:inline-block; border:1px solid var(--line); border-radius:6px; background:#fff; padding:6px 13px; color:var(--ink); font:inherit; font-size:14px; cursor:pointer; }
+  .choice input:checked + span,button[aria-pressed=true] { border-color:var(--teal); background:#d6eae3; color:#114e45; font-weight:630; }
+  .choice input:focus-visible + span,button:focus-visible,input[type=range]:focus-visible,summary:focus-visible { outline:3px solid #0079ad; outline-offset:2px; }
+  .results { border-top:1px solid var(--line); margin-top:20px; padding-top:16px; }
+  .results p { margin:5px 0 12px; font-size:14px; color:var(--muted); }
+  .status { min-height:1.5em; margin-top:8px; font-size:14px; color:var(--teal); }
+  details { margin-top:16px; font-size:14px; }
+  summary { cursor:pointer; color:var(--teal); }
+  textarea { display:block; margin-top:8px; width:100%; font:inherit; resize:vertical; padding:9px; border:1px solid var(--line); border-radius:5px; background:#fff; color:var(--ink); }
+  footer { border-top:1px solid var(--line); padding-top:12px; font-size:13px; color:var(--muted); }
+  @media(max-width:720px) { .layout { grid-template-columns:1fr; gap:18px; } .stage { min-height:250px; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>K151 脸屏试读</h1>
+    <p>用直尺或标准银行卡校准后，从 20 厘米和 50 厘米各看一次。先看清双眼，再读一行短字幕。</p>
+  </header>
+  <div class="layout">
+    <section aria-label="原屏画面与试读反馈">
+      <div class="stage"><canvas id="lcd" width="320" height="240" role="img" aria-label="Jarvis 脸屏字幕试读"></canvas></div>
+      <p class="stage-caption">黑色区域模拟有效显示区，约 40.64 × 30.48 毫米。320 × 240 像素。</p>
+      <div class="results">
+        <h2>记录试读感受</h2>
+        <fieldset><legend>眼睛到屏幕的实际距离</legend><div class="choices" id="distance"></div></fieldset>
+        <p>自行前后移动。切换距离标签不会放缩画面。</p>
+        <div class="buttons"><button id="clear" type="button" aria-pressed="false">一眼读清</button><button id="hard" type="button" aria-pressed="false">阅读吃力</button></div>
+        <div class="status" id="message" role="status"></div>
+        <details><summary>查看并选取反馈文字</summary><textarea id="report" readonly rows="4" aria-label="本次试读反馈"></textarea><p>可直接复制给项目会话。记录只留在当前页面，关闭或刷新后清空。</p></details>
+      </div>
+    </section>
+    <section class="settings" aria-label="校准与画面设置">
+      <div class="section">
+        <h2><label for="scale">校准实物大小</label></h2>
+        <fieldset><legend>参照物</legend><div class="choices" id="reference">
+          <label class="choice"><input type="radio" name="reference" value="50" checked><span>直尺 · 50 毫米</span></label>
+          <label class="choice"><input type="radio" name="reference" value="85.6"><span>银行卡 · 85.60 毫米</span></label>
+        </div></fieldset>
+        <p class="help"><span id="ruler-hint">把直尺的 0 与 50 毫米刻度对齐绿色线段两端。</span> 拖动滑块微调，也可用方向键。换显示器或调整网页缩放后请重新校准。</p>
+        <div class="ruler-box"><div class="ruler" id="ruler" aria-hidden="true"></div></div>
+        <div class="range"><input type="range" id="scale" min="40" max="240" step="0.5" value="100" aria-label="标尺缩放百分比"><output for="scale" id="percentage">100%</output></div>
+      </div>
+      <h2>画面设置</h2>
+      <fieldset><legend>对话场景</legend><div class="choices" id="scene"></div></fieldset>
+      <fieldset><legend>字幕行数</legend><div class="choices" id="lines"></div></fieldset>
+      <p class="help" style="margin-top:16px">先在常用亮度下试读，再用较远距离复看。如果要眯眼、凑近或错过第二行，可以记为「阅读吃力」。</p>
+    </section>
+  </div>
+  <footer>双眼沿用 Jarvis UED v0.3 的工作／倾听与英语／说话静帧。屏幕宽高按标称 2 英寸、4:3 推算。字幕采用本机字体绘制，实机亮度、玻璃反光、字库与像素效果仍需用 K151 验证。</footer>
+</main>
+<script>
+"use strict";
+const frames = {"work": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMjAiIGhlaWdodD0iMjQwIiB2aWV3Qm94PSIwIDAgNzIwIDU0MCI+Cjx0aXRsZT5KYXJ2aXMgwrcg5bel5L2cIMK3IOWAvuWQrDwvdGl0bGU+CjxkZWZzPjxmaWx0ZXIgaWQ9InNvZnRHbG93IiB4PSItNjAlIiB5PSItNjAlIiB3aWR0aD0iMjIwJSIgaGVpZ2h0PSIyMjAlIj48ZmVHYXVzc2lhbkJsdXIgc3RkRGV2aWF0aW9uPSI4Ii8+PC9maWx0ZXI+PC9kZWZzPjxyZWN0IHdpZHRoPSI3MjAiIGhlaWdodD0iNTQwIiBmaWxsPSIjMDMwNzBjIi8+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAgLTQyKSI+PHBhdGggZD0iTTg1IDIyOEw2NCAyNDlMODUgMjcwIE02MzUgMjI4TDY1NiAyNDlMNjM1IDI3MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjYWViNGZmIiBzdHJva2Utd2lkdGg9IjciIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgLz48dGV4dCB4PSIzNjAiIHk9Ijk2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjUiIGZvbnQtd2VpZ2h0PSI2NTAiIGZpbGw9IiNhZWI0ZmYiIHRyYW5zZm9ybT0icm90YXRlKDAgMzYwIDk2KSI+Jmx0Oy8mZ3Q7PC90ZXh0PjxyZWN0IHg9IjU0MSIgeT0iMzkwIiB3aWR0aD0iMjEiIGhlaWdodD0iNiIgcng9IjMiIGZpbGw9IiNhZWI0ZmYiIG9wYWNpdHk9IjAuNTUiLz48L2c+PGcgb3BhY2l0eT0iLjEiIGZpbHRlcj0idXJsKCNzb2Z0R2xvdykiPjxnIGRhdGEtc2hhcGU9ImhleGlyaXMiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDIyNy4wMCAyMDkuMDApIHJvdGF0ZSgwLjAwKSBzY2FsZSgxLjAwMDAgMS4wMDAwKSI+PHBhdGggZGF0YS1leWUtc2hhcGU9ImhleGlyaXMiIGQ9Ik0tNDItNzZMNDItNzZMODcgMEw0MiA3NkwtNDIgNzZMLTg3IDBaIiBmaWxsPSIjOWNmZmYxIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48ZWxsaXBzZSBjeD0iNSIgY3k9Ii00IiByeD0iMjUiIHJ5PSIzMCIgZmlsbD0iIzA3MTMxZCIvPjxjaXJjbGUgY3g9IjE0IiBjeT0iLTE3IiByPSI4IiBmaWxsPSIjZWFmZmZmIi8+PC9nPjxnIGRhdGEtc2hhcGU9ImhleGlyaXMiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQ5My4wMCAyMDkuMDApIHJvdGF0ZSgwLjAwKSBzY2FsZSgxLjAwMDAgMS4wMDAwKSI+PHBhdGggZGF0YS1leWUtc2hhcGU9ImhleGlyaXMiIGQ9Ik0tNDItNzZMNDItNzZMODcgMEw0MiA3NkwtNDIgNzZMLTg3IDBaIiBmaWxsPSIjOWNmZmYxIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48ZWxsaXBzZSBjeD0iNSIgY3k9Ii00IiByeD0iMjUiIHJ5PSIzMCIgZmlsbD0iIzA3MTMxZCIvPjxjaXJjbGUgY3g9IjE0IiBjeT0iLTE3IiByPSI4IiBmaWxsPSIjZWFmZmZmIi8+PC9nPjwvZz48ZyBkYXRhLWxheWVyPSJleWVzIiBvcGFjaXR5PSIxIj48ZyBpZD0ibGVmdC1leWUiIGRhdGEtc2hhcGU9ImhleGlyaXMiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDIyNy4wMCAyMDkuMDApIHJvdGF0ZSgwLjAwKSBzY2FsZSgxLjAwMDAgMS4wMDAwKSI+PHBhdGggZGF0YS1leWUtc2hhcGU9ImhleGlyaXMiIGQ9Ik0tNDItNzZMNDItNzZMODcgMEw0MiA3NkwtNDIgNzZMLTg3IDBaIiBmaWxsPSIjOWNmZmYxIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48ZWxsaXBzZSBjeD0iNSIgY3k9Ii00IiByeD0iMjUiIHJ5PSIzMCIgZmlsbD0iIzA3MTMxZCIvPjxjaXJjbGUgY3g9IjE0IiBjeT0iLTE3IiByPSI4IiBmaWxsPSIjZWFmZmZmIi8+PC9nPjxnIGlkPSJyaWdodC1leWUiIGRhdGEtc2hhcGU9ImhleGlyaXMiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQ5My4wMCAyMDkuMDApIHJvdGF0ZSgwLjAwKSBzY2FsZSgxLjAwMDAgMS4wMDAwKSI+PHBhdGggZGF0YS1leWUtc2hhcGU9ImhleGlyaXMiIGQ9Ik0tNDItNzZMNDItNzZMODcgMEw0MiA3NkwtNDIgNzZMLTg3IDBaIiBmaWxsPSIjOWNmZmYxIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48ZWxsaXBzZSBjeD0iNSIgY3k9Ii00IiByeD0iMjUiIHJ5PSIzMCIgZmlsbD0iIzA3MTMxZCIvPjxjaXJjbGUgY3g9IjE0IiBjeT0iLTE3IiByPSI4IiBmaWxsPSIjZWFmZmZmIi8+PC9nPjwvZz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwIC00MikiPjxnIGRhdGEtbGF5ZXI9InN5bWJvbHMiPjxwYXRoIGQ9Ik0xMDIgMjEwUTY4IDI3NCAxMDIgMzM4IE03OSAxODhRMzAgMjc0IDc5IDM2MCBNNjE4IDIxMFE2NTIgMjc0IDYxOCAzMzggTTY0MSAxODhRNjkwIDI3NCA2NDEgMzYwIiBmaWxsPSJub25lIiBzdHJva2U9IiNhZWI0ZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIwLjgiLz48L2c+PC9nPgo8L3N2Zz4K", "english": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMjAiIGhlaWdodD0iMjQwIiB2aWV3Qm94PSIwIDAgNzIwIDU0MCI+Cjx0aXRsZT5KYXJ2aXMgwrcg6Iux6K+tIMK3IOivtOivnTwvdGl0bGU+CjxkZWZzPjxmaWx0ZXIgaWQ9InNvZnRHbG93IiB4PSItNjAlIiB5PSItNjAlIiB3aWR0aD0iMjIwJSIgaGVpZ2h0PSIyMjAlIj48ZmVHYXVzc2lhbkJsdXIgc3RkRGV2aWF0aW9uPSI4Ii8+PC9maWx0ZXI+PC9kZWZzPjxyZWN0IHdpZHRoPSI3MjAiIGhlaWdodD0iNTQwIiBmaWxsPSIjMDMwNzBjIi8+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAgLTQyKSI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjODZlOWRiIiBzdHJva2Utd2lkdGg9IjUiPjxwYXRoIGQ9Ik03NiAxMjRoODRxMTUgMCAxNSAxNXYzNXEwIDE1LTE1IDE1aC00NWwtMjAgMTl2LTE5SDc2cS0xNSAwLTE1LTE1di0zNXEwLTE1IDE1LTE1WiIvPjwvZz48dGV4dCB4PSIxMTgiIHk9IjE2OCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InN5c3RlbS11aSxzYW5zLXNlcmlmIiBmb250LXNpemU9IjI2IiBmb250LXdlaWdodD0iNjUwIiBmaWxsPSIjODZlOWRiIiB0cmFuc2Zvcm09InJvdGF0ZSgwIDExOCAxNjgpIj5BYTwvdGV4dD48dGV4dCB4PSI2MDciIHk9IjM4OCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InN5c3RlbS11aSxzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmb250LXdlaWdodD0iNjUwIiBmaWxsPSIjODZlOWRiIiB0cmFuc2Zvcm09InJvdGF0ZSgtOCA2MDcgMzg4KSI+aGkhPC90ZXh0PjwvZz48ZyBvcGFjaXR5PSIuMSIgZmlsdGVyPSJ1cmwoI3NvZnRHbG93KSI+PGcgZGF0YS1zaGFwZT0iZG91YmxlYmVhbiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMjI3LjAwIDIwOS4wMCkgcm90YXRlKDAuMDApIHNjYWxlKDEuMDAwMCAxLjAwMDApIj48cGF0aCBkYXRhLWV5ZS1zaGFwZT0iZG91YmxlYmVhbiIgZD0iTS01OC03OUMtMTgtODYtNS00Ni01IDBDLTUgNTItMTggOTAtNTMgODBDLTg0IDcxLTg4LTYxLTU4LTc5WiBNMTktNzBDNTMtOTMgODUtMzYgNzYgMjFDNzMgNjkgNDAgOTAgMTkgNTRDLTQgMTctNi01MiAxOS03MFoiIGZpbGw9IiNjNWI0ZmYiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjxlbGxpcHNlIGN4PSItMjEiIGN5PSItMzgiIHJ4PSIxMSIgcnk9IjE4IiBmaWxsPSIjZWRmZmZmIiBvcGFjaXR5PSIuNiIgdHJhbnNmb3JtPSJyb3RhdGUoLTIwIC0yMSAtMzgpIi8+PC9nPjxnIGRhdGEtc2hhcGU9ImRvdWJsZWJlYW4iIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQ5My4wMCAyMDkuMDApIHJvdGF0ZSgwLjAwKSBzY2FsZSgxLjAwMDAgMS4wMDAwKSI+PHBhdGggZGF0YS1leWUtc2hhcGU9ImRvdWJsZWJlYW4iIGQ9Ik0tNTgtNzlDLTE4LTg2LTUtNDYtNSAwQy01IDUyLTE4IDkwLTUzIDgwQy04NCA3MS04OC02MS01OC03OVogTTE5LTcwQzUzLTkzIDg1LTM2IDc2IDIxQzczIDY5IDQwIDkwIDE5IDU0Qy00IDE3LTYtNTIgMTktNzBaIiBmaWxsPSIjYzViNGZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48ZWxsaXBzZSBjeD0iLTIxIiBjeT0iLTM4IiByeD0iMTEiIHJ5PSIxOCIgZmlsbD0iI2VkZmZmZiIgb3BhY2l0eT0iLjYiIHRyYW5zZm9ybT0icm90YXRlKC0yMCAtMjEgLTM4KSIvPjwvZz48L2c+PGcgZGF0YS1sYXllcj0iZXllcyIgb3BhY2l0eT0iMSI+PGcgaWQ9ImxlZnQtZXllIiBkYXRhLXNoYXBlPSJkb3VibGViZWFuIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgyMjcuMDAgMjA5LjAwKSByb3RhdGUoMC4wMCkgc2NhbGUoMS4wMDAwIDEuMDAwMCkiPjxwYXRoIGRhdGEtZXllLXNoYXBlPSJkb3VibGViZWFuIiBkPSJNLTU4LTc5Qy0xOC04Ni01LTQ2LTUgMEMtNSA1Mi0xOCA5MC01MyA4MEMtODQgNzEtODgtNjEtNTgtNzlaIE0xOS03MEM1My05MyA4NS0zNiA3NiAyMUM3MyA2OSA0MCA5MCAxOSA1NEMtNCAxNy02LTUyIDE5LTcwWiIgZmlsbD0iI2M1YjRmZiIgZmlsbC1ydWxlPSJldmVub2RkIi8+PGVsbGlwc2UgY3g9Ii0yMSIgY3k9Ii0zOCIgcng9IjExIiByeT0iMTgiIGZpbGw9IiNlZGZmZmYiIG9wYWNpdHk9Ii42IiB0cmFuc2Zvcm09InJvdGF0ZSgtMjAgLTIxIC0zOCkiLz48L2c+PGcgaWQ9InJpZ2h0LWV5ZSIgZGF0YS1zaGFwZT0iZG91YmxlYmVhbiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNDkzLjAwIDIwOS4wMCkgcm90YXRlKDAuMDApIHNjYWxlKDEuMDAwMCAxLjAwMDApIj48cGF0aCBkYXRhLWV5ZS1zaGFwZT0iZG91YmxlYmVhbiIgZD0iTS01OC03OUMtMTgtODYtNS00Ni01IDBDLTUgNTItMTggOTAtNTMgODBDLTg0IDcxLTg4LTYxLTU4LTc5WiBNMTktNzBDNTMtOTMgODUtMzYgNzYgMjFDNzMgNjkgNDAgOTAgMTkgNTRDLTQgMTctNi01MiAxOS03MFoiIGZpbGw9IiNjNWI0ZmYiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjxlbGxpcHNlIGN4PSItMjEiIGN5PSItMzgiIHJ4PSIxMSIgcnk9IjE4IiBmaWxsPSIjZWRmZmZmIiBvcGFjaXR5PSIuNiIgdHJhbnNmb3JtPSJyb3RhdGUoLTIwIC0yMSAtMzgpIi8+PC9nPjwvZz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwIC00MikiPjxnIGRhdGEtbGF5ZXI9InN5bWJvbHMiPjxwYXRoIGQ9Ik04MCAyNTZWMjg2IE02NDAgMjU2VjI4NiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjODZlOWRiIiBzdHJva2Utd2lkdGg9IjciIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgLz48cGF0aCBkPSJNOTkgMjQ2VjI5NiBNNjIxIDI0NlYyOTYiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzg2ZTlkYiIgc3Ryb2tlLXdpZHRoPSI3IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIC8+PHBhdGggZD0iTTExOCAyMzZWMzA2IE02MDIgMjM2VjMwNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjODZlOWRiIiBzdHJva2Utd2lkdGg9IjciIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgLz48L2c+PC9nPgo8L3N2Zz4K"};
+const scenes = {
+  work: {
+    label:"中文技术问答", frame:"work", status:"正在听",
+    one:["Java 接口是什么？"], two:["Java 接口是什么？","和抽象类有什么区别？"]
+  },
+  english: {
+    label:"英语对话", frame:"english", status:"Speaking",
+    one:["How was your weekend?"], two:["How was your weekend?", "Did you cook at home?"]
+  }
+};
+const images = {};
+const state = { scene:"work", lines:"one", distance:"20" };
+const results = new Map();
+const canvas = document.getElementById("lcd");
+const ctx = canvas.getContext("2d");
+const scale = document.getElementById("scale");
+const message = document.getElementById("message");
+function choices(group, entries) {
+  const host = document.getElementById(group);
+  for (const [value, label] of entries) {
+    const item = document.createElement("label");
+    const input = document.createElement("input");
+    const span = document.createElement("span");
+    item.className = "choice";
+    input.type = "radio"; input.name = group; input.value = value;
+    input.checked = value === state[group];
+    span.textContent = label;
+    input.addEventListener("change", () => {
+      state[group] = value;
+      draw();
+      updateResults();
+    });
+    item.append(input, span); host.append(item);
+  }
+}
+function draw() {
+  const scene = scenes[state.scene];
+  ctx.fillStyle = "#03070c"; ctx.fillRect(0, 0, 320, 240);
+  if (images[scene.frame]?.naturalWidth) ctx.drawImage(images[scene.frame],0,0,320,240);
+  const lines = scene[state.lines];
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.font = '14px system-ui, "PingFang SC", sans-serif';
+  ctx.fillStyle = "#a6c9c7"; ctx.fillText(scene.status,160,167);
+  ctx.font = '600 22px system-ui, "PingFang SC", "Microsoft YaHei", sans-serif';
+  ctx.fillStyle = "#f0f5f2";
+  lines.forEach((line, index) => ctx.fillText(line,160,lines.length === 1 ? 213 : 199 + index * 28));
+  canvas.setAttribute("aria-label", scene.label + "。" + lines.join(" "));
+}
+function key() { return [state.scene, state.lines, state.distance].join("/"); }
+function context(s) {
+  return [scenes[s.scene].label, s.lines === "one" ? "一行" : "两行", s.distance+" 厘米"].join(" · ");
+}
+function updateResults() {
+  const current = results.get(key());
+  for (const [id, text] of [["clear","一眼读清"],["hard","阅读吃力"]]) {
+    document.getElementById(id).setAttribute("aria-pressed", String(current?.text === text));
+  }
+  message.textContent = current ? "已记录 " + context(state) + " · " + current.text : "";
+  document.getElementById("report").value = results.size
+    ? [...results.values()].map(r => context(r) + " · " + r.text + "（标尺 " + r.scale + "%）").join("\n")
+    : "尚未记录试读结果。";
+}
+function record(text) {
+  results.set(key(),{ ...state, text, scale:scale.value });
+  updateResults();
+}
+document.getElementById("reference").addEventListener("change",event=>{
+  if (event.target.name !== "reference") return;
+  const card = event.target.value === "85.6";
+  document.documentElement.style.setProperty("--reference-length", card ? "85.6" : "50");
+  document.getElementById("ruler-hint").textContent = card
+    ? "将标准银行卡长边的左右两端与绿色线段对齐。可用背面对屏比对，只需外形。"
+    : "把直尺的 0 与 50 毫米刻度对齐绿色线段两端。";
+});
+scale.addEventListener("input",()=>{
+  document.documentElement.style.setProperty("--scale", Number(scale.value)/100);
+  document.getElementById("percentage").value = scale.value + "%";
+  if (results.size) { results.clear(); updateResults(); message.textContent="标尺已改变，请按新尺寸重新试读。"; }
+});
+document.getElementById("clear").addEventListener("click",()=>record("一眼读清"));
+document.getElementById("hard").addEventListener("click",()=>record("阅读吃力"));
+choices("scene",Object.entries(scenes).map(([id,s])=>[id,s.label]));
+choices("lines",[["one","一行"],["two","两行"]]);
+choices("distance",[["20","20 厘米"],["50","50 厘米"]]);
+for (const [name, url] of Object.entries(frames)) {
+  const img = new Image();
+  images[name]=img; img.addEventListener("load",draw); img.src=url;
+}
+draw(); updateResults();
+</script>
+</body>
+</html>
